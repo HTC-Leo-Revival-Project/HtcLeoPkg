@@ -26,7 +26,7 @@
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = HtcLeoPkg/HtcLeoPkg.fdf
 
-  DEFINE USE_SCREEN_FOR_SERIAL_OUTPUT = 0
+  DEFINE USE_SCREEN_FOR_SERIAL_OUTPUT = TRUE
 
 !include HtcLeoPkg/CommonDsc.dsc.inc
 
@@ -76,13 +76,14 @@
 
   # Framebuffer
   FrameBufferBltLib|MdeModulePkg/Library/FrameBufferBltLib/FrameBufferBltLib.inf
-  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+  MemoryInitPeiLib|HtcLeoPkg/Library/MemoryInitPeiLib/PeiMemoryAllocationLib.inf
   CompilerIntrinsicsLib|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
   # Little kernel libraries
   MsmPcomLib|HtcLeoPkg/Library/MsmPcomLib/MsmPcomLib.inf
   MsmPcomClientLib|HtcLeoPkg/Library/MsmPcomClientLib/MsmPcomClientLib.inf
   HtcLeoVibrationLib|HtcLeoPkg/GPLLibrary/HtcLeoVibrationLib/HtcLeoVibrationLib.inf
+  MallocLib|HtcLeoPkg/Library/MallocLib/MallocLib.inf
 
   # SoC Drivers libraries
   StrLib|HtcLeoPkg/Library/StrLib/StrLib.inf
@@ -99,7 +100,8 @@
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   MemoryAllocationLib|EmbeddedPkg/Library/PrePiMemoryAllocationLib/PrePiMemoryAllocationLib.inf
-  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+  MemoryInitPeiLib|HtcLeoPkg/Library/MemoryInitPeiLib/PeiMemoryAllocationLib.inf
+  # PlatformPeiLib|HtcLeoPkg/Library/PlatformPeiLib/PlatformPeiLib.inf
   PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
 
@@ -268,6 +270,7 @@
   #
   EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
 
+
   # Tetris
   HtcLeoPkg/Application/TetrisApp/tetris.inf
 
@@ -310,13 +313,7 @@
   MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
   MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
   MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-  MdeModulePkg/Application/UiApp/UiApp.inf {
-    <LibraryClasses>
-      NULL|MdeModulePkg/Library/DeviceManagerUiLib/DeviceManagerUiLib.inf
-      NULL|MdeModulePkg/Library/BootManagerUiLib/BootManagerUiLib.inf
-      NULL|MdeModulePkg/Library/BootMaintenanceManagerUiLib/BootMaintenanceManagerUiLib.inf
-      PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
-  }
+  HtcLeoPkg/Application/HtcLeoMenuApp/HtcLeoMenuApp.inf
   ShellPkg/Application/Shell/Shell.inf {
     <LibraryClasses>
       ShellCommandLib|ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf

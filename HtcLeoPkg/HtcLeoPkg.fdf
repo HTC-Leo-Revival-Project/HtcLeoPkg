@@ -1,5 +1,5 @@
 [FD.QSD8250_UEFI]
-BaseAddress   = 0x2C000000|gArmTokenSpaceGuid.PcdFdBaseAddress  # The base address of the Firmware in NOR Flash.
+BaseAddress   = 0x28000000|gArmTokenSpaceGuid.PcdFdBaseAddress  # The base address of the Firmware in NOR Flash.
 Size          = 0x00100000|gArmTokenSpaceGuid.PcdFdSize         # The size in bytes of the FLASH Device
 ErasePolarity = 1
 
@@ -184,9 +184,9 @@ APRIORI DXE {
 
 
   // Mainline device tree blob
-  FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E326 {
-  SECTION RAW = HtcLeoPkg/FdtBlob/qcom-qsd8250-htc-leo.dtb
-}
+  #FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E326 {
+  #SECTION RAW = HtcLeoPkg/FdtBlob/qcom-qsd8250-htc-leo.dtb
+#}
 
 
   #
@@ -202,6 +202,7 @@ APRIORI DXE {
 !ifdef $(INCLUDE_TFTP_COMMAND)
   INF ShellPkg/DynamicCommand/TftpDynamicCommand/TftpDynamicCommand.inf
 !endif #$(INCLUDE_TFTP_COMMAND)
+  INF HtcLeoPkg/Application/TetrisApp/tetris.inf
 
   #
   # Bds
@@ -212,7 +213,7 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
   INF MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-  INF MdeModulePkg/Application/UiApp/UiApp.inf
+  INF HtcLeoPkg/Application/HtcLeoMenuApp/HtcLeoMenuApp.inf
   INF HtcLeoPkg/Drivers/LogoDxe/LogoDxe.inf
 
 [FV.FVMAIN_COMPACT]

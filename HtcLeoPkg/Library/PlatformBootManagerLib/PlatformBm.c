@@ -437,7 +437,7 @@ PlatformRegisterOptionsAndKeys (
   ShellOption = PlatformRegisterFvBootOption(
       &gUefiShellFileGuid, 
       L"UEFI Shell",
-      LOAD_OPTION_ACTIVE
+      LOAD_OPTION_CATEGORY_APP
   );
 }
 

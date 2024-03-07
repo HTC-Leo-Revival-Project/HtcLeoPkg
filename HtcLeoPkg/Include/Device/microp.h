@@ -3,7 +3,6 @@
  * Based on the open source driver from HTC
  *
  */
- 
 #define MICROP_LSENSOR_ADC_CHAN				6
 #define MICROP_REMOTE_KEY_ADC_CHAN			7
 

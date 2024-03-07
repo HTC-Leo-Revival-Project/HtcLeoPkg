@@ -8,3 +8,7 @@ ImageResources/Tools/yangbin
 ImageResources/uefi.img
 ImageResources/LEOIMG.nbh
 workspace/Build/
+<<<<<<< HEAD
+.vscode/*
+=======
+>>>>>>> main
