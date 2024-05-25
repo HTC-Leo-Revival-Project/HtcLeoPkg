@@ -53,6 +53,7 @@
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferPixelBpp|32|UINT32|0x0000a403
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferVisibleWidth|480|UINT32|0x0000a404
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferVisibleHeight|800|UINT32|0x0000a405
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferReconfig|1|BOOLEAN|0x0000a412
 
   # Memory serial
   gQSD8250PkgTokenSpaceGuid.PcdPstoreAddress|0x2FE00000|UINT32|0x0000a406

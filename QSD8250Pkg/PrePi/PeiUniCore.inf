@@ -103,6 +103,7 @@
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferWidth
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferHeight
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferPixelBpp
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferReconfig
 
 [Pcd]
   gArmTokenSpaceGuid.PcdSystemMemoryBase

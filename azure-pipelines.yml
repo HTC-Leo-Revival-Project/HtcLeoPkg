@@ -43,29 +43,41 @@ steps:
       chmod a+x *.sh
 
 - script: |
-    ./build.sh -d All
+    ./build.sh -d Schubert
   displayName: Build uefi for all platforms
 
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Htc Leo UEFI kernel'
-  inputs: 
-    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/leo_uefi.img
-    artifactName: Htc Leo UEFI kernel
+#- task: PublishBuildArtifacts@1
+#  displayName: 'Publish Htc Leo UEFI kernel'
+#  inputs: 
+#    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/leo_uefi.img
+#    artifactName: Htc Leo UEFI kernel
+
+#- task: PublishBuildArtifacts@1
+#  displayName: 'Publish Htc Leo UEFI NBH'
+#  inputs: 
+#    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/LEOIMG.nbh
+#    artifactName: Htc Leo UEFI NBH
+
+#- task: PublishBuildArtifacts@1
+#  displayName: 'Publish Htc Passion UEFI kernel'
+#  inputs: 
+#    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/passion_uefi.img
+#    artifactName: Htc Passion UEFI kernel
+
+#- task: PublishBuildArtifacts@1
+#  displayName: 'Publish Htc Bravo UEFI kernel'
+#  inputs: 
+#    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/bravo_uefi.img
+#    artifactName: Htc Bravo UEFI kernel
 
 - task: PublishBuildArtifacts@1
-  displayName: 'Publish Htc Leo UEFI NBH'
+  displayName: 'Publish Htc Schubert UEFI payload'
   inputs: 
-    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/LEOIMG.nbh
-    artifactName: Htc Leo UEFI NBH
+    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/Schubert/bootpayload.bin
+    artifactName: Htc Schubert UEFI payload
 
 - task: PublishBuildArtifacts@1
-  displayName: 'Publish Htc Passion UEFI kernel'
-  inputs: 
-    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/passion_uefi.img
-    artifactName: Htc Passion UEFI kernel
-
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Htc Bravo UEFI kernel'
-  inputs: 
-    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/bravo_uefi.img
-    artifactName: Htc Bravo UEFI kernel
+  displayName: 'Publish Htc Shubert UEFI FD'
+  inputs:
+    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/workspace/Build/HtcSchubert/DEBUG_GCC/FV/QSD8250_UEFI.fd
+    artifactName: Htc Schubert UEFI FD

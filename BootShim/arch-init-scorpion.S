@@ -1,115 +1,37 @@
 /*
- * Copyright (c) 2008 Travis Geiselbrecht
+ * Copyright (c) 2008-2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2009, Google Inc.
+ * All rights reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files
- * (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the 
+ *    distribution.
+ *  * Neither the name of Google, Inc. nor the names of its contributors
+ *    may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED 
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 
-#define DSB .byte 0x4f, 0xf0, 0x7f, 0xf5
-#define ISB .byte 0x6f, 0xf0, 0x7f, 0xf5
-#define WSPL_VADDR 0x80000000
 
-.text
-.globl _start
-_start:
-        //schubert hack: jump straight to uefi_setup for now
-        b   uefi_setup
-	b   reset
-	b   prepare_for_linux
-	//b   __cpu_early_init
-
-//if EDK2 is loaded by wince spl add romhdr
-.org 0x40
-	.word 0x43454345
-	.word (romhdr-_start)+WSPL_VADDR  // virtual address of romhdr
-	.word romhdr-_start               // file address of romhdr
-
-.org 0x00000900
-romhdr:
-	.word 0x2000000             // dllfirst
-	.word 0x2000000             // dlllast
-	.word WSPL_VADDR            // physfirst
-	.word WSPL_VADDR+0x000F0000 // physlast (using hardoded FV size, fix later?)
-	.word 0                     // nummods (no TOCentry after ROMHDR)
-	.word WSPL_VADDR+0x000F0000 // ulRAMStart
-	.word WSPL_VADDR+0x000F0000 // ulRAMFree
-	.word WSPL_VADDR+0x001F0000 // ulRAMEnd
-	.word 0                     // ulCopyEntries
-	.word 0                     // ulCopyOffset
-	.word 0                     // ulProfileLen
-	.word 0                     // ulProfileOffset
-	.word 0                     // numfiles
-	.word 0                     // ulKernelFlags
-	.word 0x80808080            // ulFSRamPercent
-	.word 0                     // ulDrivglobStart
-	.word 0                     // ulDrivglobLen
-	.hword 0x1C2                // usCPUType
-	.hword 0x2                  // usMiscFlags
-	.word 0                     // pExtensions
-	.word 0                     // ulTrackingStart
-	.word 0                     // ulTrackingLen
-.org 0x00001000
-
-reset:
-	/* do some cpu setup */
-	mrc		p15, 0, r0, c1, c0, 0
-	bic		r0, r0, #(1<<15| 1<<13 | 1<<12)
-	bic		r0, r0, #(1<<2 | 1<<0)
-	orr		r0, r0, #(1<<1)
-	mcr		p15, 0, r0, c1, c0, 0
-.ltorg
-
-.text		
-.code 32
-prepare_for_linux:
-	// Martijn Stolk's code so kernel will not crash. aux control register
-	MRC p15, 0, r0, c1, c0, 1
-	BIC r0, r0, #0x40
-	BIC r0, r0, #0x200000
-	MCR p15, 0, r0, c1, c0, 1
-
-	// Disable VFP
-	MOV R0, #0
-	FMXR FPEXC, r0
-
-    // disable mmu
-	MRC p15, 0, r0, c1, c0, 0
-	BIC r0, r0, #(1<<0)
-	MCR p15, 0, r0, c1, c0, 0
-	ISB
-	
-	// Invalidate the UTLB
-	MOV r0, #0
-	MCR p15, 0, r0, c8, c7, 0
-
-	// Clean and invalidate cache - Ensure pipeline flush
-	MOV R0, #0
-	DSB
-	ISB
-
-	// TODO: Detect spl boot, branch to __cpu_early_init
-	b   uefi_setup
-.ltorg
-
-/* For original source/licensing see arch-init-scorpion.S in the same directory
- * 
- * TODO:
+/* TODO:
  * - style cleanup
  * - do we need to do *all* of this at boot?
  */
@@ -154,8 +76,7 @@ SET_SA:
 	/* write to L2VR3F1 */
 	mcr p15, 3, r2, c15, c15, 1
 
-	//bx lr
-	b uefi_setup
+	bx lr
 
 table_l1_acc:
 	.word 0xFC00
@@ -310,10 +231,12 @@ __cpu_early_init:
         ORR    r2, r2, #0x00000800
         MCR    p15, 0, r2, c1, c0, 0      //; WCP15_SCTLR  r2
 
+#ifdef CONFIG_ARCH_QSD8X50
         /* disable predecode repair cache for thumb2 (DPRC, set bit 4 in PVR0F2) */
         mrc p15, 0, r2, c15, c15, 2
         orr r2, r2, #0x10
         mcr p15, 0, r2, c15, c15, 2
+#endif
 
         mov r1, lr
         //; Make sure Link stack is initialized with branch and links to sequential addresses
@@ -464,53 +387,97 @@ SEQ8:
         //;Clear ETMPDSR[STICKYPD] bit
         MRC   p14, 1, r2, c1, c5, 4        //; RCP14_ETMPDSR       r2
 
+/*
+#ifdef APPSBL_ETM_ENABLE
+        ;----------------------------------------------------------------------
+        ; Optionally Enable the ETM (Embedded Trace Macro) which is used for debug
+        ;----------------------------------------------------------------------
+
+        ; enable ETM clock if disabled
+        MRC   p15, 7, r1, c15, c0, 5       ; RCP15_CPMR           r1
+        ORR   r1, r1, #0x00000008
+        MCR   p15, 7, r1, c15, c0, 5       ; WCP15_CPMR           r1
+        ISB
+
+        ; set trigger event to counter1 being zero
+        MOV   r3, #0x00000040
+        MCR   p14, 1, r3, c0, c2, 0        ; WCP14_ETMTRIGGER     r3
+
+        ; clear ETMSR
+        MOV   r2, #0x00000000
+        MCR   p14, 1, r2, c0, c4, 0        ; WCP14_ETMSR          r2
+
+        ; clear trace enable single address comparator usage
+        MCR   p14, 1, r2, c0, c7, 0        ; WCP14_ETMTECR2       r2
+
+        ; set trace enable to always
+        MOV   r2, #0x0000006F
+        MCR   p14, 1, r2, c0, c8, 0        ; WCP14_ETMTEEVR       r2
+
+        ; clear trace enable address range comparator usage and exclude nothing
+        MOV   r2, #0x01000000
+        MCR   p14, 1, r2, c0, c9, 0        ; WCP14_ETMTECR1       r2
+
+        ; set view data to always
+        MOV   r2, #0x0000006F
+        MCR   p14, 1, r2, c0, c12, 0       ; WCP14_ETMVDEVR       r2
+
+        ; clear view data single address comparator usage
+        MOV   r2, #0x00000000
+        MCR   p14, 1, r2, c0, c13, 0       ;  WCP14_ETMVDCR1       r2
+
+        ; clear view data address range comparator usage and exclude nothing
+        MOV   r2, #0x00010000
+        MCR   p14, 1, r2, c0, c15, 0       ;  WCP14_ETMVDCR3       r2
+
+        ; set counter1 to 194
+        MOV   r2, #0x000000C2
+        MCR   p14, 1, r2, c0, c0, 5        ;  WCP14_ETMCNTRLDVR1   r2
+
+        ; set counter1 to never reload
+        MOV   r2, #0x0000406F
+        MCR   p14, 1, r2, c0, c8, 5        ;  WCP14_ETMCNTRLDEVR1  r2
+
+        ; set counter1 to decrement every cycle
+        MOV   r2, #0x0000006F
+        MCR   p14, 1, r2, c0, c4, 5        ; WCP14_ETMCNTENR1     r2
+
+        ; Set trace synchronization frequency 1024 bytes
+        MOV   r2, #0x00000400
+        MCR   p14, 1, r2, c0, c8, 7        ; WCP14_ETMSYNCFR      r2
+
+        ; Program etm control register
+        ;  - Set the CPU to ETM clock ratio to 1:1
+        ;  - Set the ETM to perform data address tracing
+        MOV   r2, #0x00002008
+        MCR   p14, 1, r2, c0, c0, 0        ; WCP14_ETMCR          r2
+        ISB
+#endif *//* APPSBL_ETM_ENABLE */
+
+/*
+#ifdef APPSBL_VFP_ENABLE
+       ;----------------------------------------------------------------------
+       ; Perform the following operations if you intend to make use of
+       ; the VFP/Neon unit. Note that the FMXR instruction requires a CPU ID
+       ; indicating the VFP unit is present (i.e.Cortex-A8). .
+       ; Some tools will require full double precision floating point support
+       ; which will become available in Scorpion pass 2
+       ;----------------------------------------------------------------------
+       ; allow full access to CP 10 and 11 space for VFP/NEON use
+        MRC   p15, 0, r1, c1, c0, 2        ; Read CP Access Control Register
+        ORR   r1, r1, #0x00F00000          ; enable full access for p10,11
+        MCR   p15, 0, r1, c1, c0, 2        ; Write CPACR
+
+        ;make sure the CPACR is complete before continuing
+        ISB
+
+       ; Enable VFP itself (certain OSes may want to dynamically set/clear
+       ; the enable bit based on the application being executed
+        MOV   r1, #0x40000000
+        FMXR  FPEXC, r1
+#endif *//* APPSBL_VFP_ENABLE */
+
 	/* we have no stack, so just tail-call into the SET_SA routine... */
 	b SET_SA
 
 .ltorg
-
-.code 32
-.text
-uefi_setup:
-	// From PrimeG2Pkg
-	// Disable Strict alignment checking & Enable Instruction cache
-  	mrc     p15, 0, r0, c1, c0, 0
-  	bic     r0, r0, #0x00002300     /* clear bits 13, 9:8 (--V- --RS) */
-  	bic     r0, r0, #0x00000005     /* clear bits 0, 2 (---- -C-M) */
-  	bic     r0, r0, #0x00000002     /* Clear bit 1 (Alignment faults) */
-  	orr     r0, r0, #0x00001000     /* set bit 12 (I) enable I-Cache */
-  	mcr     p15, 0, r0, c1, c0, 0
-
-_relocate:
-	/* see if we need to relocate */
-	adr	r0, _Payload 	// load the payload adress into r0
-
-	ldr	r1, UefiBase 	// load the expected payload base into r1
-	cmp	r0, r1		 	// compare the adresses
-	beq	_Entry			// jump to entry if the adress is the same
-	ldr	r2, UefiSize
-
-_CopyLoop:
-	/* memcpy */
-	ldr	r3, [r0], #4
-	str	r3, [r1], #4
-	subs	r2, r2, #4	// substract the size that got copied from fd size
-	bgt	_CopyLoop		// branch if greater than zero
-
-	/* we're relocated, jump to the right address */
-
-_Entry:
-	ldr		r5, UefiBase
-	bx		r5
-
-UefiBase:
-	.word UEFI_BASE
-
-UefiSize:
-	.word UEFI_SIZE
-
-.ltorg
-
-.text
-.align 4
-_Payload:

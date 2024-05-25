@@ -94,6 +94,9 @@ ReconfigFb()
   // Stride
   MmioWrite32(MDP_DMA_P_BUF_Y_STRIDE, (Bpp / 8) * Width);
 
+  // Write fb addr (relocates fb to 0x02A00000 on schubert)
+  MmioWrite32(MDP_DMA_P_BUF_ADDR, FixedPcdGet32(PcdMipiFrameBufferAddress));
+
   // Ensure all transfers finished
   ArmInstructionSynchronizationBarrier();
   ArmDataMemoryBarrier();
@@ -145,14 +148,27 @@ PrePiMain (
   UINTN                       StacksSize;
   FIRMWARE_SEC_PERFORMANCE    Performance;
 
+  PaintScreen(0xFFFF); //RGB565_WHITE
+
   // Initialize the architecture specific bits
   ArchInitialize ();
 
+  PaintScreen(0xF800); //RGB565_RED
+
   // Reconfigure the framebuffer based on PCD
-  ReconfigFb();
+  if(FixedPcdGetBool(PcdMipiFrameBufferReconfig)) {
+    ReconfigFb();
+  }
+  else {
+    // Just clear screen to black for edk2 logs to be visible
+    PaintScreen(0x0000);
+  }
 
   // Enable the counter (code from PrimeG2Pkg)
   EnableCounter();
+
+  PaintScreen(0x07E0); //RGB565_GREEN
+
 
   // Initialize the Serial Port
   SerialPortInitialize ();

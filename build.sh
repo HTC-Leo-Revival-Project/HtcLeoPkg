@@ -5,7 +5,7 @@ set -e
 export PACKAGES_PATH=$PWD/../edk2:$PWD/../edk2-platforms:$PWD
 export WORKSPACE=$PWD/workspace
 
-AvailablePlatforms=("Leo" "Passion" "Bravo" "All")
+AvailablePlatforms=("Leo" "Passion" "Bravo" "Schubert" "All")
 IsValid=0
 
 while getopts d: flag

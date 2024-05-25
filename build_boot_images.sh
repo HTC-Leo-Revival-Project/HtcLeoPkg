@@ -15,10 +15,16 @@ if [ $1 == 'Leo' ]; then
 
     cd ImageResources/Tools
     ./nbgen os.nb
-    ./yang -F ../LEOIMG.nbh -f logo.nb,os.nb -t 0x600,0x400 -s 64 -d PB8110000 -c 11111111 -v EDK2 -l WWE
-    rm *.bin
-    rm os.nb
+    mv ./os.nb ./os_leo.nb
+    ./yang -F ../LEOIMG.nbh -f logo.nb,os_leo.nb -t 0x600,0x400 -s 64 -d PB8110000 -c 11111111 -v EDK2 -l WWE
     cd ../../
+elif [ $1 == 'Schubert' ]; then
+    cd WpShim && make UEFI_BASE=0x24000000 UEFI_SIZE=0x00100000 && cd ../
+    cat WpShim/BootShim.bin workspace/Build/HtcSchubert/DEBUG_GCC/FV/QSD8250_UEFI.fd >>ImageResources/Schubert/bootpayload.bin
+
+    # NBH creation
+    # cd ImageResources/Schubert && ./makenbh.sh
+
 elif [ $1 = "Passion" ] || [ $1 = "Bravo" ]; then
     cat BootShim/BootShim.bin workspace/Build/Htc$1/DEBUG_GCC/FV/QSD8250_UEFI.fd >>ImageResources/$1/bootpayload.bin
     mkbootimg --kernel ImageResources/$1/bootpayload.bin --ramdisk ImageResources/$1/dummy --base 0x20000000 --kernel_offset 0x00008000 -o ImageResources/${1,,}_uefi.img
