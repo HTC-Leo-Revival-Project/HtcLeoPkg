@@ -11,7 +11,7 @@
 UINTN Width = FixedPcdGet32(PcdMipiFrameBufferWidth);
 UINTN Height = FixedPcdGet32(PcdMipiFrameBufferHeight);
 UINTN FbAddr = FixedPcdGet32(PcdMipiFrameBufferAddress);
-UINTN gBpp = 0;
+UINTN GlobalBpp = 0;
 
 VOID
 PaintScreen(
@@ -21,8 +21,8 @@ PaintScreen(
     // Code from FramebufferSerialPortLib
 	char* Pixels = (void*)FbAddr;
 
-    if(gBpp == 0) {
-        gBpp = FixedPcdGet32(PcdMipiFrameBufferPixelBpp);
+    if(GlobalBpp == 0) {
+        GlobalBpp = FixedPcdGet32(PcdMipiFrameBufferPixelBpp);
     }
 
 	// Set color.
@@ -31,7 +31,7 @@ PaintScreen(
 		for (UINTN j = 0; j < Height; j++)
 		{
 			// Set pixel bit
-			for (UINTN p = 0; p < (gBpp / 8); p++)
+			for (UINTN p = 0; p < (GlobalBpp / 8); p++)
 			{
 				*Pixels = (unsigned char)BgColor;
 				BgColor = BgColor >> 8;
@@ -47,7 +47,7 @@ ReconfigFb(
 )
 {
   UINT32 dma_cfg = 0;
-  gBpp = Bpp;
+  GlobalBpp = Bpp;
 
   // Paint screen to black
   PaintScreen(0);
