@@ -158,7 +158,8 @@
   # Framebuffer
   FrameBufferBltLib|MdeModulePkg/Library/FrameBufferBltLib/FrameBufferBltLib.inf
   MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
-
+  FrameBufferConfigLib|QSD8250Pkg/Library/FrameBufferConfigLib/FrameBufferConfigLib.inf
+  
   # Little kernel libraries
   MsmPcomLib|QSD8250Pkg/Library/MsmPcomLib/MsmPcomLib.inf
   MsmPcomClientLib|QSD8250Pkg/Library/MsmPcomClientLib/MsmPcomClientLib.inf

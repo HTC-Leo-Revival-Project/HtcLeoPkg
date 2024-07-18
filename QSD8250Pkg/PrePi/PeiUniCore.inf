@@ -54,6 +54,7 @@
   PrePiHobListPointerLib
   PlatformPeiLib
   MemoryInitPeiLib
+  FrameBufferConfigLib
 
 [Ppis]
   gArmMpCoreInfoPpiGuid
