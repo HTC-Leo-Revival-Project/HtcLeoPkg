@@ -36,6 +36,7 @@
 #define DMA_PACK_TIGHT                      (1 << 6)
 #define DMA_PACK_LOOSE                      0
 #define DMA_PACK_ALIGN_LSB                  0
+#define DMA_PACK_ALIGN_MSB (1<<7)
 
 #define DMA_PACK_PATTERN_RGB				\
         (MDP_GET_PACK_PATTERN(0,CLR_R,CLR_G,CLR_B, 2)<<8)

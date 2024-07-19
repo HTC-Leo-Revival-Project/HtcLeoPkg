@@ -60,7 +60,7 @@ ReconfigFb(
 
   // Format
   // https://github.com/marc1706/hd2_kernel/blob/f4951cda4525e4cba87a3de83fd00aee61bb2897/drivers/video/msm/mdp_lcdc.c#L152
-  dma_cfg |= (DMA_PACK_ALIGN_LSB |
+  dma_cfg |= (DMA_PACK_ALIGN_MSB |
           DMA_PACK_PATTERN_RGB |
           DMA_DITHER_EN);
   
