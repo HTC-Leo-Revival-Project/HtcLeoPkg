@@ -15,6 +15,7 @@
 #include <Library/PrePiHobListPointerLib.h>
 #include <Library/TimerLib.h>
 #include <Library/PerformanceLib.h>
+#include <Library/FrameBufferConfigLib.h>
 
 #include <Ppi/GuidedSectionExtraction.h>
 #include <Ppi/ArmMpCoreInfo.h>
@@ -25,85 +26,10 @@
 UINT64  mSystemMemoryEnd = FixedPcdGet64 (PcdSystemMemoryBase) +
                            FixedPcdGet64 (PcdSystemMemorySize) - 1;
 
-UINTN Width = FixedPcdGet32(PcdMipiFrameBufferWidth);
+/*UINTN Width = FixedPcdGet32(PcdMipiFrameBufferWidth);
 UINTN Height = FixedPcdGet32(PcdMipiFrameBufferHeight);
 UINTN Bpp = FixedPcdGet32(PcdMipiFrameBufferPixelBpp);
-UINTN FbAddr = FixedPcdGet32(PcdMipiFrameBufferAddress);
-
-VOID
-PaintScreen(
-  IN  UINTN   BgColor
-)
-{
-  // Code from FramebufferSerialPortLib
-	char* Pixels = (void*)FixedPcdGet32(PcdMipiFrameBufferAddress);
-
-	// Set color.
-	for (UINTN i = 0; i < Width; i++)
-	{
-		for (UINTN j = 0; j < Height; j++)
-		{
-			// Set pixel bit
-			for (UINTN p = 0; p < (Bpp / 8); p++)
-			{
-				*Pixels = (unsigned char)BgColor;
-				BgColor = BgColor >> 8;
-				Pixels++;
-			}
-		}
-	}
-}
-
-VOID
-ReconfigFb()
-{
-  UINT32 dma_cfg = 0;
-
-  PaintScreen(0);
-
-  // Stop any previous transfers
-  MmioWrite32(MDP_LCDC_EN, 0);
-
-  ArmInstructionSynchronizationBarrier();
-  ArmDataMemoryBarrier();
-
-  // Format
-  // https://github.com/marc1706/hd2_kernel/blob/f4951cda4525e4cba87a3de83fd00aee61bb2897/drivers/video/msm/mdp_lcdc.c#L152
-  dma_cfg |= (DMA_PACK_ALIGN_LSB |
-          DMA_PACK_PATTERN_RGB |
-          DMA_DITHER_EN);
-  
-  dma_cfg |= DMA_OUT_SEL_LCDC; // Select the DMA channel for LCDC
-  
-  // Format
-  if(Bpp == 16) {
-      dma_cfg |= DMA_IBUF_FORMAT_RGB565;
-  }
-  else if(Bpp == 24) {
-      dma_cfg |= DMA_IBUF_FORMAT_RGB888;
-  }
-  else if(Bpp == 32) {
-      dma_cfg |= DMA_IBUF_FORMAT_XRGB8888;
-  }
-
-  dma_cfg &= ~DMA_DST_BITS_MASK;
-  dma_cfg |= DMA_DSTC0G_8BITS|DMA_DSTC1B_8BITS|DMA_DSTC2R_8BITS;
-
-  MmioWrite32(MDP_DMA_P_CONFIG, dma_cfg);
-
-  // Stride
-  MmioWrite32(MDP_DMA_P_BUF_Y_STRIDE, (Bpp / 8) * Width);
-
-  // Write fb addr (relocates fb to 0x02A00000 on schubert)
-  MmioWrite32(MDP_DMA_P_BUF_ADDR, FixedPcdGet32(PcdMipiFrameBufferAddress));
-
-  // Ensure all transfers finished
-  ArmInstructionSynchronizationBarrier();
-  ArmDataMemoryBarrier();
-
-  // Enable LCDC
-  MmioWrite32(MDP_LCDC_EN, 0x1);
-}
+UINTN FbAddr = FixedPcdGet32(PcdMipiFrameBufferAddress);*/
 
 VOID
 EnableCounter()
@@ -152,10 +78,7 @@ PrePiMain (
   ArchInitialize ();
 
   // Reconfigure the framebuffer based on PCD
-  ReconfigFb();
-
-  // Paint screen to red
-  PaintScreen(FB_BGRA8888_BLACK);
+  ReconfigFb(FixedPcdGet32(PcdMipiFrameBufferPixelBpp));
 
   // Enable the counter (code from PrimeG2Pkg)
   EnableCounter();

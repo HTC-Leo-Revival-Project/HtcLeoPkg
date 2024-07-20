@@ -1,0 +1,39 @@
+#
+#  Copyright (c) 2018, Linaro Limited. All rights reserved.
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution.  The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php
+#
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = FrameBufferConfigLib
+  FILE_GUID                      = 61620091-45BA-4EFF-8F58-F7ABF228CEBD
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = FrameBufferConfigLib
+
+[Packages]
+  MdePkg/MdePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  ArmPkg/ArmPkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+
+[LibraryClasses]
+  DebugLib
+  # ArmPlatformLib
+  IoLib
+
+[Sources.common]
+  FrameBufferConfigLib.c
+
+[FixedPcd]
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferAddress
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferWidth
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferHeight
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferPixelBpp

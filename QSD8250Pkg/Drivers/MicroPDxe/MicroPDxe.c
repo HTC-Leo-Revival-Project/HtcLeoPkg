@@ -444,3 +444,17 @@ MicroPDxeInitialize(
 
 	return Status;
 }
+
+VOID
+EFIAPI
+ExitBootServicesEvent (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+
+  DEBUG ((DEBUG_INFO, "Disabling MircoP Led"));
+
+  // Disable the led
+ htcleo_led_set_mode(0);
+}

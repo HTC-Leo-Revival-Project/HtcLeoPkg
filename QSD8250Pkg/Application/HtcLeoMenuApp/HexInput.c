@@ -1,9 +1,12 @@
 #include "menu.h"
 
+#include <Device/DeviceType.h>
+
 #define HEX_LENGTH 8
 CHAR16 HexBuffer[HEX_LENGTH + 1] = L"00000000";
 CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message)
 {
+  DeviceType Device;
   CHAR16 HexChars[] = L"0123456789ABCDEF";
   EFI_INPUT_KEY Key;
   UINTN Index = 0;
@@ -11,6 +14,12 @@ CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message)
   UINTN OldHexCharIndex[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   BOOLEAN InputComplete = FALSE;
   CHAR16 EmptyHexBuffer[HEX_LENGTH + 1] = L"00000000";
+#if DEVICETYPE == 1
+  Device = LEO;
+#endif
+#if DEVICETYPE == 2
+  Device = SCHUBERT;
+#endif
   for (int i = 0; i < HEX_LENGTH + 1; i++){
     HexBuffer[i] = EmptyHexBuffer[i];
   }
@@ -27,7 +36,12 @@ CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message)
 
     // Read a key press (replace with actual key reading logic for the device)
     SystemTable->ConIn->ReadKeyStroke(SystemTable->ConIn, &Key);
-
+switch(Device){
+  case BRAVO:
+    break;
+  case PASSION:
+    break;
+  case LEO:
     switch (Key.ScanCode)
     {
     case SCAN_ESC: // Move to the next character
@@ -64,7 +78,37 @@ CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message)
       }
       break;
     }
-
+    break;
+  case SCHUBERT:
+    switch (Key.ScanCode)
+    {
+    case SCAN_DOWN: // Move to the next character
+      if (Index < HEX_LENGTH - 1)
+      {
+        OldHexCharIndex[Index] = HexCharIndex;
+        Index++;
+        HexCharIndex = OldHexCharIndex[Index]; // Reset to start of hex chars
+      }
+      break;
+    case SCAN_UP:// Cycle through 0-9, a-f
+        HexCharIndex = (HexCharIndex + 1) % 16;
+        HexBuffer[Index] = HexChars[HexCharIndex];
+        OldHexCharIndex[Index] = HexCharIndex;
+      break;
+    default:
+      switch (Key.UnicodeChar)
+      {
+      case CHAR_CARRIAGE_RETURN:
+        // dial button
+        InputComplete = TRUE;
+        break;
+      default:
+        break;
+      }
+      break;
+    }
+    break;  
+  }
     // Null-terminate the buffer
     HexBuffer[HEX_LENGTH] = L'\0';
   }

@@ -136,7 +136,7 @@
   OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
   ArmLib|ArmPkg/Library/ArmLib/ArmBaseLib.inf
   ArmPlatformLib|QSD8250Pkg/Library/QSD8250PkgLib/QSD8250PkgLib.inf
-  TimerLib|QSD8250Pkg/Library/GPTTimerLib/GPTTimerLib.inf
+  # TimerLib|QSD8250Pkg/Library/GPTTimerLib/GPTTimerLib.inf
   CompilerIntrinsicsLib|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
   PlatformBootManagerLib|QSD8250Pkg/Library/PlatformBootManagerLib/PlatformBootManagerLib.inf
@@ -172,6 +172,7 @@
   FrameBufferBltLib|MdeModulePkg/Library/FrameBufferBltLib/FrameBufferBltLib.inf
   MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
   CompilerIntrinsicsLib|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
+  FrameBufferConfigLib|QSD8250Pkg/Library/FrameBufferConfigLib/FrameBufferConfigLib.inf
 
   # Little kernel libraries
   MsmPcomLib|QSD8250Pkg/Library/MsmPcomLib/MsmPcomLib.inf
@@ -280,6 +281,7 @@
   ArmGenericTimerCounterLib|ArmPkg/Library/ArmGenericTimerPhyCounterLib/ArmGenericTimerPhyCounterLib.inf
 
 [BuildOptions]
+  GCC:*_*_*_CC_FLAGS = -mfpu=vfpv3
   RVCT:RELEASE_*_*_CC_FLAGS  = -DMDEPKG_NDEBUG
   GCC:RELEASE_*_*_CC_FLAGS  = -DMDEPKG_NDEBUG
 
