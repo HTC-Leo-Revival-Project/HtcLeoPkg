@@ -10,13 +10,14 @@
  *
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "nbh.h"
 
-int DEBUG=0;
+int32_t DEBUG=0;
 
 static unsigned char bmphead1[18] = {
 	0x42, 0x4d, 		/* signature */
@@ -50,7 +51,7 @@ static unsigned char bmphead3[16] = {
 
 
 /* getSectionName - returns the name based on ID */
-const char *getSectionName(unsigned long section)
+const char *getSectionName(uint32_t section)
 {
 	if (section == 0x100)
 		return "IPL";
@@ -90,14 +91,14 @@ const char *getSectionName(unsigned long section)
 }
 
 /* convertNB2BMP - converts a NB splash screen to a bitmap */
-int convertNB2BMP(FILE *input, char *filename, int biWidth, int biHeight, unsigned long dataLen, unsigned long start)
+int32_t convertNB2BMP(FILE *input, char *filename, int32_t biWidth, int32_t biHeight, uint32_t dataLen, uint32_t start)
 {
 	FILE *output;
-	int y,x;
+	int32_t y,x;
 	char filename2[1024];
 	unsigned char colors[3];
 	unsigned short encoded;
-	unsigned long biSize;
+	uint32_t biSize;
 	unsigned char data[dataLen];
 
 	sprintf(filename2, "%s.bmp", filename);
@@ -158,7 +159,7 @@ int convertNB2BMP(FILE *input, char *filename, int biWidth, int biHeight, unsign
 }
 
 /* isSectionImage - returns true if section type is splash screen */
-int isSectionImage(unsigned long type)
+int32_t isSectionImage(uint32_t type)
 {
 	if (type == 0x600)
 		return 1;
@@ -168,12 +169,12 @@ int isSectionImage(unsigned long type)
 }
 
 /* extractNB - extract NB files from NBH */
-int extractNB(FILE *input, int index, unsigned long type, unsigned long start, unsigned long len)
+int32_t extractNB(FILE *input, int32_t index, uint32_t type, uint32_t start, uint32_t len)
 {
-	int retval=0;
-	int biWidth;
-	int biHeight;
-	unsigned long dataLen;
+	int32_t retval=0;
+	int32_t biWidth;
+	int32_t biHeight;
+	uint32_t dataLen;
 	char filename[1024];
 	FILE *output;
 
@@ -223,19 +224,19 @@ int extractNB(FILE *input, int index, unsigned long type, unsigned long start, u
 /* extractNBH - Extract all ROM parts from NBH file */
 void extractNBH(char *filename)
 {
-	int i;
+	int32_t i;
 	FILE *input;
 	FILE *output;
 	FILE *tmpfile;
 	char magic[5000];
 	char magicHeader2[]={'R','0','0','0','F','F','\n'};
 	unsigned char signature[500];
-	unsigned long blockIndex = 0;
-	unsigned long offset = 0;
-	unsigned long blockLen;
-	unsigned long signLen;
-	unsigned long initsign;
-	unsigned long magicHeader[]={'H','T','C','I','M','A','G','E'};
+	uint32_t blockIndex = 0;
+	uint32_t offset = 0;
+	uint32_t blockLen;
+	uint32_t signLen;
+	uint32_t initsign;
+	uint32_t magicHeader[]={'H','T','C','I','M','A','G','E'};
 	unsigned char flag;
 	unsigned char blockSign[5000];
 	struct HTCIMAGEHEADER header;

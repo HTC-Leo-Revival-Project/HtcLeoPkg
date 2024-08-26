@@ -3,9 +3,9 @@
 
 struct HTCIMAGEHEADER {
 	char device[32];
-	unsigned long sectiontypes[32];
-	unsigned long sectionoffsets[32];
-	unsigned long sectionlengths[32];
+	uint32_t sectiontypes[32];
+	uint32_t sectionoffsets[32];
+	uint32_t sectionlengths[32];
 	char CID[32];
 	char version[16];
 	char language[16];
@@ -14,7 +14,7 @@ struct HTCIMAGEHEADER {
 extern struct HTCIMAGEHEADER HTCIMAGEHEADER;
 
 /* nbh.c */
-int bufferedReadWrite(FILE *input, FILE *output, unsigned long length);
+int32_t bufferedReadWrite(FILE *input, FILE *output, uint32_t length);
 
 /* nbhextract.c */
 void extractNBH(char *filename);
