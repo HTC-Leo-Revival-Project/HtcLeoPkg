@@ -7,3 +7,4 @@ ImageResources/*/*.bin
 ImageResources/*/*.img
 .vscode
 workspace/Build/
+.vscode

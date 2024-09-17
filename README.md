@@ -22,6 +22,10 @@
 
 - ReactOS support should be possible once the arm port will be fully bootable
 
+- Any new kernel (downstream or other binaries) and ramdisk can be loaded from SD card. (WARNING WIP)
+- Pace the kernel named zImage and ramdisk named initrd.img on the root of your SD card.
+- If booting fails (error shown on screen/screen turning blue/backlight stays on but screen is blank) just try again a few times
+
 ## Loading
 UEFI can be either chainloaded as a kernel from cLK, as well as flashed to boot directly from HSPL.
 However flashing as a HSPL image on HD7 is more complicated

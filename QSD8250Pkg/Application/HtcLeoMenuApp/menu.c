@@ -1,5 +1,6 @@
 #include "menu.h"
 #include "BootApp.h"
+#include "Booter/AndroidSDDir.h"
 
 MenuEntry MenuOptions[MAX_OPTIONS_COUNT] = {0};
 
@@ -12,11 +13,13 @@ FillMenu()
 {
   UINTN Index = 0;
   MenuOptions[Index++] = (MenuEntry){Index, L"Boot default", TRUE, &BootDefault};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Boot Android", TRUE, &BootAndroidKernel};
   MenuOptions[Index++] = (MenuEntry){Index, L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){Index, L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){Index, L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
   MenuOptions[Index++] = (MenuEntry){Index, L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
   MenuOptions[Index++] = (MenuEntry){Index, L"Reboot Menu", TRUE, &RebootMenu};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Settings", TRUE, &SettingsMenu};
   MenuOptions[Index++] = (MenuEntry){Index, L"Exit", TRUE, &ExitMenu};
 }
 
@@ -73,7 +76,7 @@ void DrawMenu()
 
   // Print menu title
   gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));
-  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 1 );
+  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN-4, 1 ); // offset by 4 so the next line will center under the name
   
   Print(L" %s \n", (CHAR16 *)PcdGetPtr(PcdFirmwareVendor));
   gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 2 );
@@ -163,6 +166,7 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
           break;
         case CHAR_BACKSPACE:
           // back button
+          FallBack = TRUE;
           break;
         default:
           break;
@@ -225,6 +229,21 @@ void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }while(Index < MAX_OPTIONS_COUNT);
 }
 
+void SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  SelectedIndex     = 0;
+  UINT8 Index = 0;
+  EFI_STATUS Status = EFI_SUCCESS;
+  
+  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
+  ASSERT_EFI_ERROR(Status);
+  MenuOptions[Index++] = (MenuEntry){Index, L"Set AD SD dir", TRUE, &SetAndroidSdDir};
+  // Fill disabled options
+  do {
+    MenuOptions[Index++] = (MenuEntry){Index, L"", FALSE, &NullFunction};
+  }while(Index < MAX_OPTIONS_COUNT);
+}
+
 void NullFunction()
 {
   //Print(L"Feature not supported yet!");
@@ -258,6 +277,7 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   EFI_STATUS Status;
   EFI_INPUT_KEY key;
   UINT32 Timeout = 400; //TODO: Get from pcd
+  CHAR16 *LoadedDir;
 
   Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
   Print(L" Back key to boot from ESP\n");
@@ -296,6 +316,15 @@ boot_esp:
   Print(L" Could not boot from ESP, loading menu\n");
 
 menu:
+      // Load previously selected directory
+    Status = LoadSelectedDirFromFile(&SelectedDir);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to load selected directory from file: %r\n", Status));
+        //fallback to root dir of sdcard
+        CHAR16* FallBackPath = L"\\";
+        FallBack = TRUE;
+        *SelectedDir = *FallBackPath;
+    }
   // Fill main menu
   FillMenu();
 

@@ -1,3 +1,5 @@
+#ifndef _MAIN_MENU_H_
+#define _MAIN_MENU_H_
 #include <Uefi.h>
 #include <PiDxe.h>
 #include <Library/UefiLib.h>
@@ -22,8 +24,7 @@
 #include <Chipset/timer.h>
 #include <Library/PrintLib.h>
 
-#ifndef _MAIN_MENU_H_
-#define _MAIN_MENU_H_
+
 
 typedef struct {
   UINT8   Index;
@@ -35,7 +36,9 @@ typedef struct {
 #define MAX_OPTIONS_COUNT 12
 #define PRINT_CENTRE_COLUMN 20
 
+void MainMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+void SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void ExitMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DrawMenu();
 void ReturnToMainMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
@@ -54,6 +57,7 @@ void NullFunction();
 void BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void StartShell(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpMemory2Sdcard(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpMemory2SdcardHelper(UINTN* hexval, CHAR16** hexstring, UINTN* length, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpDmesg(void);
