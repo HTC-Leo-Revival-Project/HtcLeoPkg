@@ -35,7 +35,6 @@
   UefiDriverEntryPoint
   BaseMemoryLib
   DebugLib
-  CompilerIntrinsicsLib
 
 [Guids.common]
   gQcomTokenSpaceGuid

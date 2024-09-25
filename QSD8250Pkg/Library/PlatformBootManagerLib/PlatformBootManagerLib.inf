@@ -44,7 +44,6 @@
 
 [LibraryClasses]
   ArmLib
-  ArmSmcLib
   BaseLib
   BaseMemoryLib
   BootLogoLib

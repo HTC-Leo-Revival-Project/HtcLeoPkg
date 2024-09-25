@@ -1,5 +1,5 @@
 [000h 0000   4]                    Signature : "APIC"    [Multiple APIC Description Table (MADT)]
-[004h 0004   4]                 Table Length : 00000094
+[004h 0004   4]                 Table Length : 00000096
 [008h 0008   1]                     Revision : 08
 [009h 0009   1]                     Checksum : 00
 [00Ah 0010   6]                       Oem ID : "MCRSFT"
@@ -13,7 +13,7 @@
                          PC-AT Compatibility : 0
 
 [02Ch 0044   1]                Subtable Type : 0B [Generic Interrupt Controller]
-[02Dh 0045   1]                       Length : 50
+[02Dh 0045   1]                       Length : 52
 [02Eh 0046   2]                     Reserved : 0000
 [030h 0048   4]         CPU Interface Number : 00000000
 [034h 0052   4]                Processor UID : 00000000
@@ -33,12 +33,13 @@
 [078h 0120   1]             Efficiency Class : 00
 [079h 0121   1]                     Reserved : 00
 [07Ah 0122   2]       SPE Overflow Interrupt : 0000
+[07Ch 0124   2]               TRBE Interrupt : 0000
 
-[07Ch 0124   1]                Subtable Type : 0C [Generic Interrupt Distributor]
-[07Dh 0125   1]                       Length : 18
-[07Eh 0126   2]                     Reserved : 0000
-[080h 0128   4]        Local GIC Hardware ID : 00000000
-[084h 0132   8]                 Base Address : 0000000000a01000
-[08Ch 0140   4]               Interrupt Base : 00000000
-[090h 0144   1]                      Version : 00
-[091h 0145   3]                     Reserved : 000000
+[07Eh 0126   1]                Subtable Type : 0C [Generic Interrupt Distributor]
+[07Fh 0127   1]                       Length : 18
+[080h 0128   2]                     Reserved : 0000
+[082h 0130   4]        Local GIC Hardware ID : 00000000
+[086h 0134   8]                 Base Address : 0000000000a01000
+[08Eh 0142   4]               Interrupt Base : 00000000
+[092h 0146   1]                      Version : 00
+[093h 0147   3]                     Reserved : 000000

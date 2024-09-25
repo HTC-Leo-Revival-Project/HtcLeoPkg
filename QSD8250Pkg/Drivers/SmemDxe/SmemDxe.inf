@@ -24,7 +24,6 @@
   MemoryAllocationLib
   UefiDriverEntryPoint
   UefiBootServicesTableLib
-  CompilerIntrinsicsLib
   CacheMaintenanceLib
   DxeServicesTableLib
   IoLib

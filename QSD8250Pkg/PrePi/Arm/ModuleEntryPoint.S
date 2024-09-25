@@ -5,8 +5,7 @@
 //
 //
 
-#include <AsmMacroIoLib.h>
-
+#include <AsmMacroLib.h>
 #include <Arm/AArch32.h>
 
 ASM_FUNC(_ModuleEntryPoint)

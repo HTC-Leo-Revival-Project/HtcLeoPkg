@@ -3,6 +3,7 @@
 set -e
 export PACKAGES_PATH=$PWD/../edk2:$PWD/../edk2-platforms:$PWD
 export WORKSPACE=$PWD/workspace
+export GCC_ARM_PREFIX=arm-linux-gnueabihf-
 
 AvailablePlatforms=("Leo" "Schubert" "All")
 IsValid=0
@@ -63,14 +64,14 @@ if [ $DEVICE == 'All' ]; then
 	do
 		if [ $PlatformName != 'All' ]; then
 			# Build
-			GCC_ARM_PREFIX=arm-none-eabi- build -s -n 0 -a ARM -t GCC -p Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc
+			build -s -n 0 -a ARM -t GCC -p Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc
 			./build_boot_shim.sh
 			./build_boot_images.sh $PlatformName
 		fi
 	done
 else
     echo "Building uefi for $DEVICE"
-	GCC_ARM_PREFIX=arm-none-eabi- build -s -n 0 -a ARM -t GCC -p Platforms/Htc${DEVICE}/Htc${DEVICE}Pkg.dsc
+	build -s -n 0 -a ARM -t GCC -p Platforms/Htc${DEVICE}/Htc${DEVICE}Pkg.dsc
 
 	./build_boot_shim.sh
 	./build_boot_images.sh $DEVICE

@@ -18,7 +18,7 @@ steps:
     architecture: 'x64'
   displayName: Install correct Python
 
-- script:  sudo apt -y install build-essential uuid-dev iasl git nasm python3-distutils crossbuild-essential-armel skales gcc-arm-none-eabi mkbootimg
+- script:  sudo apt -y install build-essential uuid-dev iasl git nasm python3-distutils crossbuild-essential-armel skales gcc-arm-none-eabi gcc-arm-linux-gnueabihf mkbootimg
   displayName: 'Install VSTS dependencies'
 
 - script: sudo ln -sfn $(pwd) ../HtcLeoPkg

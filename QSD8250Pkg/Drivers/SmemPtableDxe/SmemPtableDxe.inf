@@ -29,7 +29,6 @@
   DebugLib
   IoLib
   MemoryAllocationLib
-  CompilerIntrinsicsLib
   CacheMaintenanceLib
   DxeServicesTableLib
 
