@@ -18,7 +18,6 @@
 **/
 
 #include <Library/ArmLib.h>
-#include <Library/ArmSmcLib.h>
 
 #include <Library/BootAppLib.h>
 #include <Library/BootLogoLib.h>
