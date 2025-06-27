@@ -12,8 +12,10 @@
 *
 **/
 
+// fixme: unmodified IMX6 table
+
 #include "Platform.h"
-#include <Device/imx6_ull.h>
+#include <Device/imx6_ull.h> 
 
 // DBG2 Definitions
 #pragma pack (1)

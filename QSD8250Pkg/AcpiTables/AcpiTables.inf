@@ -27,9 +27,7 @@
   Csrt.aslc
   Dbg2.aslc
   Fadt.aslc
-  Madt.asl
-  Facs.asl
-  Gtdt.aslc
+  # Madt.asl
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -41,11 +39,4 @@
 
 [FixedPcd]
   gArmPlatformTokenSpaceGuid.PcdCoreCount
-  gArmTokenSpaceGuid.PcdGicDistributorBase
-  gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase
   gQSD8250PkgTokenSpaceGuid.PcdKdUartInstance
-
-  gArmTokenSpaceGuid.PcdArmArchTimerVirtIntrNum
-  gArmTokenSpaceGuid.PcdArmArchTimerHypIntrNum
-  gArmTokenSpaceGuid.PcdArmArchTimerSecIntrNum
-  gArmTokenSpaceGuid.PcdArmArchTimerIntrNum

@@ -21,14 +21,3 @@ Device (CPU0)
     Return (0xf)
   }
 }
-
-// Timers HAL extension
-/*Device (EPIT)
-{
-  Name (_HID, "NXP0101")
-  Name (_UID, 0x0)
-
-  Method (_STA) {
-    Return (0xf)
-  }
-}*/
