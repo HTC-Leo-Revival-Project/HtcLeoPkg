@@ -4,7 +4,7 @@
 # This driver acts as a virtual console, takes over the console I/O control from selected
 # standard console devices, and transmits console I/O to related console device drivers.
 # Consplitter could install Graphics Output protocol and/or UGA Draw protocol in system
-# table according PCD settings(PcdConOutGopSupport, and PcdConOutUgaSupport). It always
+# table according PCD settings(PcdConOutGopSupport). It always
 # consumes Graphics Output protocol which is produced by display device, and consumes UGA Draw
 # protocol which is produced by display device according to PcdUgaConsumeSupport value.
 # Note: If only UGA Draw protocol is installed in system, PcdUgaConsumeSupport should be
@@ -99,12 +99,9 @@
   gEfiGraphicsOutputProtocolGuid
   ## SOMETIMES_PRODUCES
   ## SOMETIMES_CONSUMES
-  gEfiUgaDrawProtocolGuid
 
 [FeaturePcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutGopSupport   ## CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutUgaSupport   ## CONSUMES
-  gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport        ## CONSUMES
 
 [Pcd]
   ## SOMETIMES_PRODUCES
