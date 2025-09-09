@@ -47,8 +47,10 @@ APRIORI DXE {
   # Multiple Console IO support
   #
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-  INF QSD8250Pkg/Drivers/ConSplitterDxe/ConSplitterDxe.inf
-  INF QSD8250Pkg/Drivers/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  # INF QSD8250Pkg/Drivers/ConSplitterDxe/ConSplitterDxe.inf
+  # INF QSD8250Pkg/Drivers/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
 
   INF QSD8250Pkg/Drivers/InterruptDxe/InterruptDxe.inf

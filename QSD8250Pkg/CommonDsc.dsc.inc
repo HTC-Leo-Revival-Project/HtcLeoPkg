@@ -477,8 +477,10 @@
   EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
 
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-  QSD8250Pkg/Drivers/ConSplitterDxe/ConSplitterDxe.inf
-  QSD8250Pkg/Drivers/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  # QSD8250Pkg/Drivers/ConSplitterDxe/ConSplitterDxe.inf
+  # QSD8250Pkg/Drivers/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
   MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
