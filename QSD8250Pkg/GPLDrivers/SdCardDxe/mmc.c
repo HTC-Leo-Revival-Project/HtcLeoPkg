@@ -94,7 +94,7 @@ static int SDCn_init(uint32_t instance);
 static void sdcard_gpio_config(int instance);
 
 
-block_dev_desc_t *mmc_get_dev(int dev)
+block_dev_desc_t *mmc_get_dev()
 {
 	return ((block_dev_desc_t *) & mmc_dev);
 }
