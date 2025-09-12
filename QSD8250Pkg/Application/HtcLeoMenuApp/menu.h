@@ -29,7 +29,7 @@
 typedef struct {
   CHAR16 *Name;
   BOOLEAN IsActive;
-  void (*Function)();
+  void (*Function)(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable);
 } MenuEntry;
 
 #define MAX_OPTIONS_COUNT 12
