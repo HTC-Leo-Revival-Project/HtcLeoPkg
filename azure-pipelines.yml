@@ -21,6 +21,15 @@ steps:
 - script:  sudo apt -y install build-essential uuid-dev iasl git nasm crossbuild-essential-armel skales gcc-arm-none-eabi mkbootimg clang llvm lld python3-setuptools
   displayName: 'Install VSTS dependencies'
 
+- script: |
+    cd /home/vsts/work/1/
+    git clone https://android.googlesource.com/platform/system/tools/mkbootimg -b android-12.1.0_r26 --depth=1
+    cd mkbootimg
+    chmod +x mkbootimg.py
+    # optionally symlink to /usr/local/bin so mkbootimg works as usual
+    sudo ln -sfn $(pwd)/mkbootimg.py /usr/local/bin/mkbootimg
+  displayName: 'Install Android mkbootimg.py'
+
 - script: sudo ln -sfn $(pwd) ../HtcLeoPkg
   displayName: Fix directory links
 
