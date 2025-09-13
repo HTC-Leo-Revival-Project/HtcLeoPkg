@@ -146,19 +146,6 @@ GraphicsConsoleControllerDriverSupported (
                   EFI_OPEN_PROTOCOL_BY_DRIVER
                   );
 
-  if (EFI_ERROR (Status) && FeaturePcdGet (PcdUgaConsumeSupport)) {
-    //
-    // Open Graphics Output Protocol failed, try to open UGA Draw Protocol
-    //
-    Status = gBS->OpenProtocol (
-                    Controller,
-                    &gEfiUgaDrawProtocolGuid,
-                    (VOID **) &UgaDraw,
-                    This->DriverBindingHandle,
-                    Controller,
-                    EFI_OPEN_PROTOCOL_BY_DRIVER
-                    );
-  }
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -203,14 +190,6 @@ Error:
           This->DriverBindingHandle,
           Controller
           );
-  } else if (FeaturePcdGet (PcdUgaConsumeSupport)) {
-    gBS->CloseProtocol (
-          Controller,
-          &gEfiUgaDrawProtocolGuid,
-          This->DriverBindingHandle,
-          Controller
-          );
-  }
   return Status;
 }
 
@@ -424,17 +403,6 @@ GraphicsConsoleControllerDriverStart (
                   EFI_OPEN_PROTOCOL_BY_DRIVER
                   );
 
-  if (EFI_ERROR(Status) && FeaturePcdGet (PcdUgaConsumeSupport)) {
-    Status = gBS->OpenProtocol (
-                    Controller,
-                    &gEfiUgaDrawProtocolGuid,
-                    (VOID **) &Private->UgaDraw,
-                    This->DriverBindingHandle,
-                    Controller,
-                    EFI_OPEN_PROTOCOL_BY_DRIVER
-                    );
-  }
-
   if (EFI_ERROR (Status)) {
     goto Error;
   }
@@ -615,14 +583,6 @@ Error:
              This->DriverBindingHandle,
              Controller
              );
-    } else if (FeaturePcdGet (PcdUgaConsumeSupport)) {
-      gBS->CloseProtocol (
-             Controller,
-             &gEfiUgaDrawProtocolGuid,
-             This->DriverBindingHandle,
-             Controller
-             );
-    }
 
     if (Private->LineBuffer != NULL) {
       FreePool (Private->LineBuffer);
@@ -700,13 +660,6 @@ GraphicsConsoleControllerDriverStop (
       gBS->CloseProtocol (
             Controller,
             &gEfiGraphicsOutputProtocolGuid,
-            This->DriverBindingHandle,
-            Controller
-            );
-    } else if (FeaturePcdGet (PcdUgaConsumeSupport)) {
-      gBS->CloseProtocol (
-            Controller,
-            &gEfiUgaDrawProtocolGuid,
             This->DriverBindingHandle,
             Controller
             );

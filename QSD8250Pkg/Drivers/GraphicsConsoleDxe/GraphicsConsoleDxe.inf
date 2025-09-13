@@ -58,14 +58,10 @@
   gEfiDevicePathProtocolGuid                    ## TO_START
   gEfiSimpleTextOutProtocolGuid                 ## BY_START
   gEfiGraphicsOutputProtocolGuid                ## TO_START
-  gEfiUgaDrawProtocolGuid                       ## TO_START
   gEfiHiiFontProtocolGuid                       ## TO_START
   ## TO_START
   ## NOTIFY
   gEfiHiiDatabaseProtocolGuid
-
-[FeaturePcd]
-  gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport ## CONSUMES
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution ## SOMETIMES_CONSUMES

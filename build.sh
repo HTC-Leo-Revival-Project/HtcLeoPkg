@@ -71,6 +71,30 @@ if [ $DEVICE == 'All' ]; then
 		fi
 	done
 else
+
+	echo "Patching EDK2 Source"
+file="../edk2/BaseTools/Source/C/GenFw/Elf32Convert.c"
+
+# Check if R_ARM_PC13 already exists
+if ! grep -q "case R_ARM_PC13:" "$file"; then
+    # Insert after R_ARM_REL32
+    sed -i '/case R_ARM_REL32:/a\        case R_ARM_PC13:' "$file"
+    echo "Inserted 'case R_ARM_PC13:' after 'case R_ARM_REL32:'."
+else
+    echo "'case R_ARM_PC13:' already exists. No changes made."
+fi
+
+
+file="../edk2/MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/UnicodeCollationEng.c"
+
+# Use sed to replace only if the "Status;" version exists
+if grep -q "EFI_STATUS  Status;" "$file"; then
+    sed -i 's/EFI_STATUS  Status;/EFI_STATUS  Status = EFI_SUCCESS;/' "$file"
+    echo "Replaced 'EFI_STATUS  Status;' with 'EFI_STATUS  Status = EFI_SUCCESS;'"
+else
+    echo "Pattern not found, no changes made."
+fi
+
     echo "Building uefi for $DEVICE"
 	build -n $NUM_CPUS -a ARM -t CLANGDWARF -p Platforms/Htc${DEVICE}/Htc${DEVICE}Pkg.dsc -b DEBUG
 
