@@ -35,8 +35,11 @@ steps:
 
 - script: |
       cd /home/vsts/work/1/
-      git clone https://github.com/Tianocore/edk2.git --recursive --depth=1
-      git clone https://github.com/tianocore/edk2-platforms.git --depth=1
+      git clone https://github.com/Tianocore/edk2.git -b stable/202508 --recursive --depth=1
+      git clone https://github.com/tianocore/edk2-platforms.git
+      cd edk2-platforms
+      git reset --hard a5e5644d0e574da64ed908c7232d1cf5f6720c1f
+      cd /home/vsts/work/1/
   displayName: Clone sources
 
 - script: |
