@@ -75,11 +75,15 @@ else
 	echo "Patching EDK2 Source"
 file="../edk2/BaseTools/Source/C/GenFw/Elf32Convert.c"
 
+PATCH1_APPLIED=0
+PATCH2_APPLIED=0
+
 # Check if R_ARM_PC13 already exists
 if ! grep -q "case R_ARM_PC13:" "$file"; then
-    # Insert after R_ARM_REL32
+ 	# Insert after R_ARM_REL32
     sed -i '/case R_ARM_REL32:/a\        case R_ARM_PC13:' "$file"
     echo "Inserted 'case R_ARM_PC13:' after 'case R_ARM_REL32:'."
+    PATCH1_APPLIED=1
 else
     echo "'case R_ARM_PC13:' already exists. No changes made."
 fi
@@ -91,8 +95,17 @@ file="../edk2/MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/UnicodeCol
 if grep -q "EFI_STATUS  Status;" "$file"; then
     sed -i 's/EFI_STATUS  Status;/EFI_STATUS  Status = EFI_SUCCESS;/' "$file"
     echo "Replaced 'EFI_STATUS  Status;' with 'EFI_STATUS  Status = EFI_SUCCESS;'"
+    PATCH2_APPLIED=1
 else
     echo "Pattern not found, no changes made."
+fi
+
+if [[ $PATCH1_APPLIED -eq 1 && $PATCH2_APPLIED -eq 1 ]]; then
+    echo "Both patches applied. Rebuilding BaseTools..."
+    make clean -C ../edk2/BaseTools
+    make -C ../edk2/BaseTools -j$(nproc)
+else
+    echo "Not all patches were applied. Skipping BaseTools rebuild."
 fi
 
     echo "Building uefi for $DEVICE"
