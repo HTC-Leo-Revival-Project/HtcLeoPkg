@@ -154,7 +154,6 @@ static int usb_read(void *_buf, unsigned len)
 			goto oops;
 		}
 		//event_wait(&txn_done);
-		DEBUG((EFI_D_ERROR, "fastboot: usb_read() wait for evt\n"));
         gBS->WaitForEvent (1, &txn_done, &EventIndex);
 
 		if (txn_status < 0) {
@@ -396,7 +395,6 @@ fail_alloc_req:
 fail_alloc_out:
 	udc_endpoint_free(in);
 fail_alloc_in:
-    DEBUG((EFI_D_ERROR, "alloc failed\n"));
 	return -1;
 }
 
