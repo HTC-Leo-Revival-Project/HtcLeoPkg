@@ -36,6 +36,7 @@
 #define DMA_PACK_TIGHT                      (1 << 6)
 #define DMA_PACK_LOOSE                      0
 #define DMA_PACK_ALIGN_LSB                  0
+#define DMA_PACK_ALIGN_MSB (1<<7)
 
 #define DMA_PACK_PATTERN_RGB				\
         (MDP_GET_PACK_PATTERN(0,CLR_R,CLR_G,CLR_B, 2)<<8)
@@ -54,6 +55,10 @@
 #define DMA_IBUF_FORMAT_MASK			            (3 << 25)
 
 #define DMA_DST_BITS_MASK 0x3F
+
+#define RGB565_BPP 16
+#define RGB888_BPP 24
+#define ARGB8888_BPP 32
 
 VOID PaintScreen( IN UINTN BgColor );
 VOID ReconfigFb( IN UINTN Bpp );
