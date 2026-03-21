@@ -293,36 +293,11 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-#if 0
-unsigned ulpi_read(unsigned reg)
-{
-	/* initiate read operation */
-	writel(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg), USB_ULPI_VIEWPORT);
-
-	/* wait for completion */
-	while (readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
-
-	return ULPI_DATA_READ(readl(USB_ULPI_VIEWPORT));
-}
-
-void ulpi_write(unsigned val, unsigned reg)
-{
-	/* initiate write operation */
-	writel(ULPI_RUN | ULPI_WRITE |
-	       ULPI_ADDR(reg) | ULPI_DATA(val), USB_ULPI_VIEWPORT);
-
-	/* wait for completion */
-	while (readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
-}
-#endif
-
 static void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
 	int r;
-	// TODO: We're here
 	dprintf(INFO,"fastboot: processing commands\n");
-    DEBUG((EFI_D_ERROR, "fastboot: processing commands\n"));
 
 	UINT8* Buffer = AllocateAlignedPages(ArmDataCacheLineLength(), ROUNDUP(4096, ArmDataCacheLineLength()));
     ASSERT(Buffer);
@@ -333,13 +308,8 @@ again:
 		InvalidateDataCacheRange(Buffer, 64);
 
 		r = usb_read(Buffer, 64);
-		if (r < 0) {
+		if (r < 0)
 			break;
-		}else 
-		{
-			// TODO: WE NEVER GET HERE
-			DEBUG((EFI_D_ERROR, "fastboot: we got a command\n"));
-		}
 		Buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", Buffer);
         DEBUG((EFI_D_ERROR, "fastboot: %s\n", Buffer));
@@ -360,19 +330,15 @@ again:
 	}
 	fastboot_state = STATE_OFFLINE;
 	dprintf(INFO,"fastboot: oops!\n");
-    DEBUG((EFI_D_ERROR, "fastboot: oops\n"));
 }
 
-// HERE
 static int fastboot_handler(void *arg)
 {
 	for (;;) {
         UINTN EventIndex;
 
 		//event_wait(&usb_online);
-        DEBUG((EFI_D_ERROR, "fastboot handler: wait for event\n"));
         gBS->WaitForEvent (1, &usb_online, &EventIndex);
-        DEBUG((EFI_D_ERROR, "fastboot_command_loop(): \n"));
 		fastboot_command_loop();
 	}
 	return 0;
@@ -380,10 +346,8 @@ static int fastboot_handler(void *arg)
 
 static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 {
-    DEBUG((EFI_D_ERROR, "fastboot_notify()\n"));
 	if (event == UDC_EVENT_ONLINE) {
 		//event_signal(&usb_online, 0);
-        DEBUG((EFI_D_ERROR, "fastboot_notify(): usb_online!!\n"));
         gBS->SignalEvent (usb_online);
 	}
 }
@@ -406,20 +370,15 @@ int fastboot_init(void *base, unsigned size)
 	//thread_t *thr;
 	dprintf(INFO, "fastboot_init()\n");
 
-    DEBUG((EFI_D_ERROR, "fastboot_init()\n"));
-
 	download_base = base;
 	download_max = size;
 
 	//event_init(&usb_online, 0, EVENT_FLAG_AUTOUNSIGNAL);
-    DEBUG((EFI_D_ERROR, "create events\n"));
     Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &usb_online);
     ASSERT_EFI_ERROR(Status);
 	//event_init(&txn_done, 0, EVENT_FLAG_AUTOUNSIGNAL);
     Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
     ASSERT_EFI_ERROR(Status);
-
-    DEBUG((EFI_D_ERROR, "alloc endpoint\n"));
 
 	in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
 	if (!in)
@@ -428,21 +387,16 @@ int fastboot_init(void *base, unsigned size)
 	if (!out)
 		goto fail_alloc_out;
 
-    DEBUG((EFI_D_ERROR, "alloc SUCCESS!\n"));
-
 	fastboot_endpoints[0] = in;
 	fastboot_endpoints[1] = out;
 
-    DEBUG((EFI_D_ERROR, "udc_request_alloc()\n"));
 	req = udc_request_alloc();
 	if (!req)
 		goto fail_alloc_req;
 
-    DEBUG((EFI_D_ERROR, "udc_register_gadget()\n"));
 	if (udc_register_gadget(&fastboot_gadget))
 		goto fail_udc_register;
 
-     DEBUG((EFI_D_ERROR, "fastboot_register commands\n"));
 	fastboot_register("getvar:", cmd_getvar);
 	fastboot_register("download:", cmd_download);
 	fastboot_publish("version", "0.5");
