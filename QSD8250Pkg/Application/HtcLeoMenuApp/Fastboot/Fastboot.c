@@ -141,6 +141,8 @@ static void req_complete(struct udc_request *req, unsigned actual, int status)
 	txn_status = status;
 	req->length = actual;
 	//event_signal(&txn_done, 0);
+	// FUCK ME
+	gBS->SignalEvent (txn_done);
 
 }
 
@@ -151,6 +153,8 @@ static int usb_read(void *_buf, unsigned len)
 	unsigned char *buf = _buf;
 	int count = 0;
     UINTN EventIndex;
+
+	DEBUG((EFI_D_ERROR, "fastboot: usb_read()\n"));
 
 	if (fastboot_state == STATE_ERROR)
 		goto oops;
@@ -163,9 +167,11 @@ static int usb_read(void *_buf, unsigned len)
 		r = udc_request_queue(out, req);
 		if (r < 0) {
 			dprintf(INFO, "usb_read() queue failed\n");
+			DEBUG((EFI_D_ERROR, "fastboot: usb_read() queue failed\n"));
 			goto oops;
 		}
 		//event_wait(&txn_done);
+		DEBUG((EFI_D_ERROR, "fastboot: usb_read() wait for evt\n"));
         gBS->WaitForEvent (1, &txn_done, &EventIndex);
 
 		if (txn_status < 0) {
@@ -287,6 +293,7 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+#if 0
 unsigned ulpi_read(unsigned reg)
 {
 	/* initiate read operation */
@@ -307,11 +314,13 @@ void ulpi_write(unsigned val, unsigned reg)
 	/* wait for completion */
 	while (readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
 }
+#endif
 
 static void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
 	int r;
+	// TODO: We're here
 	dprintf(INFO,"fastboot: processing commands\n");
     DEBUG((EFI_D_ERROR, "fastboot: processing commands\n"));
 
@@ -324,16 +333,22 @@ again:
 		InvalidateDataCacheRange(Buffer, 64);
 
 		r = usb_read(Buffer, 64);
-		if (r < 0) break;
-		buffer[r] = 0;
-		dprintf(INFO,"fastboot: %s\n", buffer);
-        DEBUG((EFI_D_ERROR, "fastboot: %s\n", buffer));
+		if (r < 0) {
+			break;
+		}else 
+		{
+			// TODO: WE NEVER GET HERE
+			DEBUG((EFI_D_ERROR, "fastboot: we got a command\n"));
+		}
+		Buffer[r] = 0;
+		dprintf(INFO,"fastboot: %s\n", Buffer);
+        DEBUG((EFI_D_ERROR, "fastboot: %s\n", Buffer));
 
 		for (cmd = cmdlist; cmd; cmd = cmd->next) {
-			if (memcmp(buffer, cmd->prefix, cmd->prefix_len))
+			if (memcmp(Buffer, cmd->prefix, cmd->prefix_len))
 				continue;
 			fastboot_state = STATE_COMMAND;
-			cmd->handle((const char*) buffer + cmd->prefix_len,
+			cmd->handle((const char*) Buffer + cmd->prefix_len,
 				    (void*) download_base, download_size);
 			if (fastboot_state == STATE_COMMAND)
 				fastboot_fail("unknown reason");
