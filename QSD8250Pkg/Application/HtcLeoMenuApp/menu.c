@@ -160,10 +160,6 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
           break;
         case CHAR_TAB:
           // windows button
-          DEBUG(
-              (EFI_D_ERROR, "%d Menuentries are marked as active\n",
-              GetActiveMenuEntryLength()));
-          DEBUG((EFI_D_ERROR, "SelectedIndex is: %d\n", SelectedIndex));
           break;
         case CHAR_BACKSPACE:
           // back button
@@ -367,15 +363,6 @@ boot_esp:
   Print(L" Could not boot from ESP, loading menu\n");
 
 menu:
-      // Load previously selected directory
-    Status = LoadSelectedDirFromFile(&SelectedDir);
-    if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to load selected directory from file: %r\n", Status));
-        //fallback to root dir of sdcard
-        CHAR16* FallBackPath = L"\\";
-        FallBack = TRUE;
-        *SelectedDir = *FallBackPath;
-    }
   // Fill main menu
   FillMenu();
 
