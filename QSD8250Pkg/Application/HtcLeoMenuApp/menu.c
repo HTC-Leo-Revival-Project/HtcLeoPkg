@@ -14,6 +14,7 @@ FillMenu()
   UINTN Index = 0;
 
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
+  MenuOptions[Index++] = (MenuEntry){L"Fastboot", TRUE, &StartFastboot};
   MenuOptions[Index++] = (MenuEntry){L"Boot android kernel", TRUE, &BootAndroidKernel};
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
