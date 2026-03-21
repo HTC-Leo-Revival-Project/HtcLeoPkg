@@ -546,6 +546,11 @@ void cmd_boot(const char *arg, void *data, unsigned sz) {
     DEBUG((EFI_D_ERROR, "BOOT CALLED\n"));
 }
 
+void cmd_continue(const char *arg, void *data, unsigned sz) {
+    DEBUG((EFI_D_ERROR, "CONTINUE CALLED\n"));
+	fastboot_okay("");
+}
+
 void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
     // All necessary code to start listening for commands
@@ -557,9 +562,9 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     fastboot_register("boot", cmd_boot);
 
     DEBUG((EFI_D_ERROR, "fastboot publish\n"));
-	/*fastboot_register("continue", cmd_continue);
-	fastboot_register("reboot", cmd_reboot);
-	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);*/
+	fastboot_register("continue", cmd_continue);
+	//fastboot_register("reboot", cmd_reboot);
+	//fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
 	fastboot_publish("product", "EDK2 LEO");//fastboot_publish("product", TARGET(BOARD));
 	fastboot_publish("kernel", "lk");
 
