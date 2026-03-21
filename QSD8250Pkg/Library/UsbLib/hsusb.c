@@ -28,36 +28,29 @@
  * SUCH DAMAGE.
  */
 
-/*#include <string.h>
-#include <stdlib.h>
-#include <debug.h>
-#include <platform/iomap.h>
-#include <platform/irqs.h>
-#include <platform/interrupts.h>
-#include <kernel/thread.h>
-#include <reg.h>
-
-#include <dev/udc.h>
-
-#include "hsusb.h"*/
-
-#include <Library/Lk/LKEnvLib.h>
-#include <Library/MallocLib.h>
-#include <Library/LcmLib.h>
-#include <Library/udc.h>
-
-#include <Library/UefiBootServicesTableLib.h>
-
 #include <Chipset/iomap.h>
 #include <Chipset/irqs.h>
 #include <Chipset/interrupts.h>
+
+
+#include <Uefi.h>
+//#include <PiDxe.h>
+#include <Library/UefiLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/BaseLib.h>
+//#include <Library/BootAppLib.h>
+#include <Library/DebugLib.h>
+#include <Library/IoLib.h>
+#include <Library/ArmLib.h>
+#include <Library/UefiBootServicesTableLib.h>
+#include <Library/Lk/LKEnvLib.h>
+#include <Library/MallocLib.h>
+#include <Library/LcmLib.h>
+#include <Library/hsusb.h>
 #include <Library/reg.h>
-
-//#include <Library/InterruptsLib.h>
-
-#include "hsusb.h"
-
+#include <Library/udc.h>
 #include <Protocol/HardwareInterrupt.h>
+
 STATIC EFI_HARDWARE_INTERRUPT_PROTOCOL *gInterrupt = NULL;
 
 #if 1
@@ -493,35 +486,13 @@ stall:
 	writel((1<<16) | (1 << 0), USB_ENDPTCTRL(ept->num));    
 }
 
-unsigned ulpi_read(unsigned reg)
-{
-        /* initiate read operation */
-	writel(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg),
-               USB_ULPI_VIEWPORT);
-
-        /* wait for completion */
-	while(readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
-    
-	return ULPI_DATA_READ(readl(USB_ULPI_VIEWPORT));
-}
-
-void ulpi_write(unsigned val, unsigned reg)
-{
-        /* initiate write operation */
-	writel(ULPI_RUN | ULPI_WRITE | 
-               ULPI_ADDR(reg) | ULPI_DATA(val),
-               USB_ULPI_VIEWPORT);
-
-        /* wait for completion */
-	while(readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
-}
-
 #define USB_CLK             0x00902910
 #define USB_PHY_CLK         0x00902E20
 #define CLK_RESET_ASSERT    0x1
 #define CLK_RESET_DEASSERT  0x0
 #define CLK_RESET(x,y)  writel((y), (x));
 
+#ifdef PLATFORM_MSM8X60
 static int msm_otg_xceiv_reset()
 {
 	CLK_RESET(USB_CLK, CLK_RESET_ASSERT);
@@ -535,6 +506,7 @@ static int msm_otg_xceiv_reset()
 	writel(0x81000000, USB_PORTSC);
 	return 0;
 }
+#endif
 
 void board_usb_init(void);
 void board_ulpi_init(void);
@@ -659,15 +631,7 @@ UdcInterrupt (
 	if (n & STS_UEI) {
 		dprintf(INFO, "<UEI %x>\n", readl(USB_ENDPTCOMPLETE));
 	}
-#if 0
-	DBG("STS: ");
-	if (n & STS_UEI) DBG("ERROR ");
-	if (n & STS_SLI) DBG("SUSPEND ");
-	if (n & STS_URI) DBG("RESET ");
-	if (n & STS_PCI) DBG("PORTCHANGE ");
-	if (n & STS_UI) DBG("USB ");
-	DBG("\n");
-#endif
+
 	if ((n & STS_UI) || (n & STS_UEI)) {
 		n = readl(USB_ENDPTSETUPSTAT);
 		if (n & EPT_RX(0)) {
@@ -806,160 +770,20 @@ int udc_start(void)
 
 int udc_stop(void)
 {
-	int val;
     writel(0, USB_USBINTR);
 	//mask_interrupt(INT_USB_HS);
 	EFI_STATUS Status = gInterrupt->DisableInterruptSource(gInterrupt, INT_USB_HS);
+	ASSERT_EFI_ERROR (Status);
 
-        /* disable pullup */
+    /* disable pullup */
 	writel(0x00080000, USB_USBCMD);
 #ifdef PLATFORM_MSM8X60
 	/* Voting down PLL8 */
-	val = readl(0x009034C0);
+	int val = readl(0x009034C0);
 	val &= ~(1<<8);
 	writel(val, 0x009034C0);
 #endif
 	thread_sleep(10);
 
 	return 0;
-}
-
-void usb_stop_charging(unsigned stop_charging)
-{
-    ENABLE_CHARGING = !stop_charging;
-}
-
-static inline unsigned is_usb_charging(void)
-{
-    return ENABLE_CHARGING;
-}
-
-void usb_charger_reset(void)
-{
-    usb_stop_charging(TRUE);
-    charger_usb_disconnected();
-}
-
-/* Charger detection code
- * Set global flags WALL_CHARGER and
- * RETURN: type of charger connected
- * CHG_WALL
- * CHG_HOST_PC
- * */
-int usb_chg_detect_type(void)
-{
-    int ret = CHG_UNDEFINED;
-
-    if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS)
-    {
-        if(charger_usb_is_charger_connected() == TRUE) {
-            WALL_CHARGER = TRUE;
-            HOST_CHARGER = FALSE;
-            charger_usb_i(1500);
-            ret = CHG_WALL;
-        }
-    }
-    else
-    {
-        if(charger_usb_is_pc_connected() == TRUE) {
-            WALL_CHARGER = FALSE;
-            HOST_CHARGER = TRUE;
-            ret = CHG_HOST_PC;
-        }
-    }
-    return ret;
-}
-
-/* check if USB cable is connected
- *
- * RETURN: If cable connected return 1
- * If cable disconnected return 0
- */
-int is_usb_cable_connected(void)
-{
-    /*Verify B Session Valid Bit to verify vbus status*/
-    if (B_SESSION_VALID & readl(USB_OTGSC)) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-/* check for USB connection assuming USB is not pulled up.
- * It looks for suspend state bit in PORTSC register.
- *
- * RETURN: If cable connected return 1
- * If cable disconnected return 0
- */
-
-int usb_cable_status(void)
-{
-    unsigned ret = 0;
-    /*Verify B Session Valid Bit to verify vbus status*/
-    writel(0x00080001, USB_USBCMD);
-    thread_sleep(100);
-
-    /*Check reset value of suspend state bit*/
-    if (!((1<<7) & readl(USB_PORTSC))) {
-        ret=1;
-    }
-    udc_stop();
-    return ret;
-}
-
-void usb_charger_change_state(void)
-{
-    int usb_connected;
-
-   //User might have switched from host pc to wall charger. So keep checking
-   //every time we are in the loop
-
-   if(ENABLE_CHARGING == TRUE)
-   {
-      usb_connected = is_usb_cable_connected();
-
-      if(usb_connected && !charger_connected)
-      {
-	//mdelay(20);
-	 thread_sleep(20);
-         /* go to RUN mode (D+ pullup enable) */
-         writel(0x00080001, USB_USBCMD);
-         //mdelay(10);
-	 thread_sleep(10);
-         usb_chg_detect_type();
-         charger_connected = TRUE;
-      }
-      else if(!usb_connected && charger_connected)
-      {
-         /* disable D+ pull-up */
-         writel(0x00080000, USB_USBCMD);
-
-         /* Applicable only for 8k target */
-         /*USB Spoof Disconnect Failure
-           Symptoms:
-           In USB peripheral mode, writing '0' to Run/Stop bit of the
-           USBCMD register doesn't cause USB disconnection (spoof disconnect).
-           The PC host doesn't detect the disconnection and the phone remains
-           active on Windows device manager.
-
-           Suggested Workaround:
-           After writing '0' to Run/Stop bit of USBCMD, also write 0x48 to ULPI
-           "Function Control" register. This can be done via the ULPI VIEWPORT
-           register (offset 0x170) by writing a value of 0x60040048.
-          */
-         ulpi_write(0x48, 0x04);
-	 //usb_charger_reset();
-         WALL_CHARGER = FALSE;
-         HOST_CHARGER = FALSE;
-         charger_usb_i(0);
-         charger_usb_disconnected();
-         charger_connected = FALSE;
-      }
-      if(WALL_CHARGER == TRUE || HOST_CHARGER == TRUE){
-	//battery_charging_image();
-      }
-   }
-   else if ((readl(USB_USBCMD) & 0x01) == 0){
-      writel(0x00080001, USB_USBCMD);
-   }
 }

@@ -1,0 +1,39 @@
+[Defines] 
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = FastbootApp
+  FILE_GUID                      = 93be6759-7d1a-4d69-986d-d78e54c9f932
+  MODULE_TYPE                    = UEFI_APPLICATION 
+  VERSION_STRING                 = 0.1 
+  ENTRY_POINT                    = StartFastboot
+
+[BuildOptions.ARM]
+  GCC:*_*_*_CC_FLAGS = -Werror -Wno-unused-function -Wno-unused-variable -Wno-incompatible-pointer-types
+
+[Sources]
+  Fastboot.c
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  MdePkg/MdePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+  
+[LibraryClasses]
+  ArmLib
+  UefiApplicationEntryPoint
+  UefiLib
+  UefiBootServicesTableLib 
+  MemoryAllocationLib 
+  BaseMemoryLib
+  TimerLib
+  IoLib
+  ResetSystemLib
+  UefiBootManagerLib
+  UsbLib
+  # DevicePathLib
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
+

@@ -19,8 +19,6 @@
   Booter/AndroidKernel.c
   Booter/WinCeKernel.c
   Booter/SdLoader.c
-  Fastboot/Fastboot.c
-  Fastboot/hsusb.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -45,7 +43,6 @@
   MallocLib
   LcmLib
   LkLib
-  InterruptsLib
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString

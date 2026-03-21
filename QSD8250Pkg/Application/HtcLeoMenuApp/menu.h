@@ -58,7 +58,7 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
 void DumpMemory2Sdcard(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpMemory2SdcardHelper(UINTN* hexval, CHAR16** hexstring, UINTN* length, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpDmesg(void);
-void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 
 EFI_STATUS ReadMemoryAndWriteToFile(UINTN* MemoryAddress,UINTN Length, CHAR16 *FilePath);
 CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message);

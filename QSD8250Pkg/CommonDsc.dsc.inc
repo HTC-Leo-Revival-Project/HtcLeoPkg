@@ -174,8 +174,7 @@
   MallocLib|QSD8250Pkg/Library/MallocLib/MallocLib.inf
   LcmLib|QSD8250Pkg/Library/LcmLib/LcmLib.inf
   LkLib|QSD8250Pkg/Library/LkLib/LkLib.inf
-  InterruptsLib|QSD8250Pkg/Library/InterruptsLib/InterruptsLib.inf
-  # UsbLib|QSD8250Pkg/Library/UsbLib/UsbLib.inf
+  UsbLib|QSD8250Pkg/Library/UsbLib/UsbLib.inf
 
 [LibraryClasses.common.SEC]
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
@@ -548,7 +547,8 @@
   #
   # Fastboot
   #
-  EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
+  # EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
+  QSD8250Pkg/Application/FastbootApp/FastbootApp.inf
 
   # Tetris
   QSD8250Pkg/Application/TetrisApp/tetris.inf

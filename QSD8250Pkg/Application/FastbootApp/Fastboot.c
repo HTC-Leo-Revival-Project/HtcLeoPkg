@@ -26,13 +26,27 @@
  * SUCH DAMAGE.
  */
 
-#include "../menu.h"
-#include "fastboot.h"
+#include <Uefi.h>
+//#include <PiDxe.h>
+#include <Library/UefiLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/BaseLib.h>
+//#include <Library/BootAppLib.h>
+#include <Library/DebugLib.h>
+#include <Library/IoLib.h>
+#include <Library/ArmLib.h>
+
+#include <Library/PlatformResetLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/UefiBootServicesTableLib.h>
 
 #include <Library/Lk/LKEnvLib.h>
 #include <Library/MallocLib.h>
 #include <Library/LcmLib.h>
 #include <Library/udc.h>
+#include <Library/hsusb.h>
+
+#include "fastboot.h"
 
 /* todo: give lk strtoul and nuke this */
 static unsigned hex2unsigned(const char *x)
@@ -422,7 +436,11 @@ void cmd_reboot(const char *arg, void *data, unsigned sz) {
     ResetCold();
 }
 
-void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+EFI_STATUS 
+EFIAPI
+StartFastboot(
+	IN EFI_HANDLE ImageHandle, 
+	IN EFI_SYSTEM_TABLE *SystemTable)
 {
     fastboot_register("boot", cmd_boot);
 	//fastboot_register("continue", cmd_continue);
@@ -438,4 +456,6 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
 	//fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
 	fastboot_init((void *)SCRATCH_ADDR, 0x00040000);
+
+	return EFI_SUCCESS;
 }

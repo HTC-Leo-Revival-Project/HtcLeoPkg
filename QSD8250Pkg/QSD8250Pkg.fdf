@@ -93,11 +93,6 @@ APRIORI DXE {
   INF EmbeddedPkg/Drivers/AndroidFastbootTransportUsbDxe/FastbootTransportUsbDxe.inf
 
   #
-  # Fastboot
-  #
-  INF EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
-
-  #
   # FAT filesystem + GPT/MBR partitioning
   #
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
@@ -126,6 +121,10 @@ APRIORI DXE {
 !ifdef $(INCLUDE_TFTP_COMMAND)
   INF ShellPkg/DynamicCommand/TftpDynamicCommand/TftpDynamicCommand.inf
 !endif #$(INCLUDE_TFTP_COMMAND)
+
+  # Fastboot App
+  # INF EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
+  INF QSD8250Pkg/Application/FastbootApp/FastbootApp.inf
 
   # Tetris App
   INF QSD8250Pkg/Application/TetrisApp/tetris.inf

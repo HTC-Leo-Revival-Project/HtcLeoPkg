@@ -14,7 +14,7 @@ FillMenu()
   UINTN Index = 0;
 
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
-  MenuOptions[Index++] = (MenuEntry){L"Fastboot", TRUE, &StartFastboot};
+  MenuOptions[Index++] = (MenuEntry){L"Fastboot", TRUE, &StartFastbootApp};
   MenuOptions[Index++] = (MenuEntry){L"Boot android kernel", TRUE, &BootAndroidKernel};
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
@@ -212,6 +212,10 @@ void StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   StartApp(ImageHandle, SystemTable, TETRIS_APP_TITLE);
 }
 
+void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  StartApp(ImageHandle, SystemTable, FASTBOOT_APP_TITLE);
+}
 
 void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
