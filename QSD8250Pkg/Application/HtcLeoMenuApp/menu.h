@@ -25,7 +25,6 @@
 #include <Library/PrintLib.h>
 
 typedef struct {
-  UINT8   Index;
   CHAR16 *Name;
   BOOLEAN IsActive;
   void (*Function)(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
