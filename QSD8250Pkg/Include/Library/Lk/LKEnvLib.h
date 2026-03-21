@@ -232,4 +232,7 @@ void exit_critical_section(void);
 typedef enum handler_return (*int_handler)(void *arg);
 void register_int_handler(unsigned int vector, int_handler handler, void *arg);
 
+#define STACKBUF_DMA_ALIGN(var, size) \
+	UINT8 __##var[(size) + CACHE_LINE]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, CACHE_LINE))
+
 #endif

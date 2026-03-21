@@ -43,6 +43,8 @@
 
 //void boot_linux(void *bootimg, unsigned sz);
 
+#define FASTBOOT_COMMAND_MAX_LENGTH 64
+
 /* todo: give lk strtoul and nuke this */
 static unsigned hex2unsigned(const char *x)
 {
@@ -225,7 +227,9 @@ oops:
 
 void fastboot_ack(const char *code, const char *reason)
 {
-	char response[64];
+	STACKBUF_DMA_ALIGN(Response, FASTBOOT_COMMAND_MAX_LENGTH);
+
+	//char response[64];
 
 	if (fastboot_state != STATE_COMMAND)
 		return;
@@ -233,11 +237,15 @@ void fastboot_ack(const char *code, const char *reason)
 	if (reason == 0)
 		reason = "";
 
-	snprintf(response, 64, "%s%s", code, reason);
+	//snprintf(response, 64, "%s%s", code, reason);
+	AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", code, reason);
 	fastboot_state = STATE_COMPLETE;
 
-	usb_write(response, strlen(response));
-
+	if( usb_write(Response, strlen((CHAR8*)Response)) < 0 ) {
+		fastboot_state = STATE_ERROR;
+	}else {
+		fastboot_state = STATE_COMPLETE;
+	}
 }
 
 void fastboot_fail(const char *reason)
