@@ -42,7 +42,7 @@
 #include <Library/udc.h>
 
 //void boot_linux(void *bootimg, unsigned sz);
-#if 0
+
 /* todo: give lk strtoul and nuke this */
 static unsigned hex2unsigned(const char *x)
 {
@@ -483,8 +483,6 @@ fastboot:
 
 // ABOOT END
 
-#endif 
-
 static struct udc_device surf_udc_device = {
 	.vendor_id	= 0x18d1,
 	.product_id	= 0x0D02,
@@ -493,10 +491,34 @@ static struct udc_device surf_udc_device = {
 	.product	= "LEO EDK2",
 };
 
+#define BASE_ADDR       0x11800000
+#define TAGS_ADDR       (BASE_ADDR+0x00000100)
+#define KERNEL_ADDR     (BASE_ADDR+0x00008000)
+#define RAMDISK_ADDR    (BASE_ADDR+0x00a00000)
+#define SCRATCH_ADDR    (BASE_ADDR+0x01400000)
+
+// placeholder
+void cmd_boot(const char *arg, void *data, unsigned sz) {
+
+}
+
 void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
     // All necessary code to start listening for commands
     
     // Init UDC first
     udc_init(&surf_udc_device);
+
+    // TODO: Add functions
+    fastboot_register("boot", cmd_boot);
+
+	/*fastboot_register("continue", cmd_continue);
+	fastboot_register("reboot", cmd_reboot);
+	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);*/
+	fastboot_publish("product", "EDK2 LEO");//fastboot_publish("product", TARGET(BOARD));
+	fastboot_publish("kernel", "lk");
+
+	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
+	fastboot_init(SCRATCH_ADDR, MEMBASE - SCRATCH_ADDR - 0x00100000);
+	udc_start();
 };

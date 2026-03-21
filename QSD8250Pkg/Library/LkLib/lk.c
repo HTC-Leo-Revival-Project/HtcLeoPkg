@@ -38,18 +38,13 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/TimerLib.h>
+#include <Library/Lk/LKEnvLib.h>
 
 #include <Chipset/timer.h>
 
-#include <Library/Lk/LKEnvLib.h>
-
 #include <Protocol/HardwareInterrupt.h>
 
-// Cached copy of the Hardware Interrupt protocol instance
-EFI_HARDWARE_INTERRUPT_PROTOCOL *gInterrupt = NULL;
-
 EFI_TPL     OriginalTPL;
-
 EFI_STATUS  Status = EFI_SUCCESS;
 
 void enter_critical_section(void) {
@@ -58,22 +53,4 @@ void enter_critical_section(void) {
 
 void exit_critical_section(void) {
   gBS->RestoreTPL (OriginalTPL);
-};
-
-// Interrupts
-/*void register_int_handler(unsigned int vector, int_handler handler, void *arg)
-{
-  gInterrupt->RegisterInterruptSource(gInterrupt, vector, handler);
-  gInterrupt->EnableInterruptSource(gInterrupt, vector);
-}*/
-
-RETURN_STATUS
-EFIAPI
-LkLibConstructor()
-{
-  // Find the interrupt controller protocol.  ASSERT if not found.
-  Status = gBS->LocateProtocol (&gHardwareInterruptProtocolGuid, NULL, (VOID **)&gInterrupt);
-  ASSERT_EFI_ERROR (Status);
-
-  return Status;
 };
