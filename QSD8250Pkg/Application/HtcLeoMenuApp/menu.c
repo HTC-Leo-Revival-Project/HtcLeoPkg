@@ -1,26 +1,26 @@
 #include "menu.h"
 #include "BootApp.h"
+#include "Booter/AndroidSDDir.h"
 
 MenuEntry MenuOptions[MAX_OPTIONS_COUNT] = {0};
 
 UINTN MenuOptionCount = 0;
 UINTN SelectedIndex = 0;
 EFI_SIMPLE_TEXT_OUTPUT_MODE InitialMode;
-EFI_WATCHDOG_TIMER_ARCH_PROTOCOL *WatchdogTimer;
-UINT64 TimerPeriod = 120 * 10 * 1000 * 1000;
-UINT64 FeedInterval = 60 * 1000 * 1000;
 
 void
 FillMenu()
 {
   UINTN Index = 0;
-  MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
-  MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
-  MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
-  MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
-  MenuOptions[Index++] = (MenuEntry){L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
-  MenuOptions[Index++] = (MenuEntry){L"Reboot Menu", TRUE, &RebootMenu};
-  MenuOptions[Index++] = (MenuEntry){L"Exit", TRUE, &ExitMenu};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Boot default", TRUE, &BootDefault};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Boot Android", TRUE, &BootAndroidKernel};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Play Tetris", TRUE, &StartTetris};
+  MenuOptions[Index++] = (MenuEntry){Index, L"EFI Shell", TRUE, &StartShell},
+  MenuOptions[Index++] = (MenuEntry){Index, L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
+  MenuOptions[Index++] = (MenuEntry){Index, L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
+  MenuOptions[Index++] = (MenuEntry){Index, L"Reboot Menu", TRUE, &RebootMenu};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Settings", TRUE, &SettingsMenu};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Exit", TRUE, &ExitMenu};
 }
 
 void PrepareConsole(
@@ -76,7 +76,7 @@ void DrawMenu()
 
   // Print menu title
   gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));
-  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 1 );
+  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN-4, 1 ); // offset by 4 so the next line will center under the name
   
   Print(L" %s \n", (CHAR16 *)PcdGetPtr(PcdFirmwareVendor));
   gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 2 );
@@ -99,7 +99,7 @@ void DrawMenu()
       gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_WHITE, EFI_BLACK));
     }
 
-    Print(L"%d. %s ", i+1, MenuOptions[i].Name);
+    Print(L"%d. %s ", MenuOptions[i].Index, MenuOptions[i].Name);
   }
 }
 
@@ -158,11 +158,15 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
           }
           break;
         case CHAR_TAB:
-          //Leo - windows button
-          //Passion - Trackball right
+          // windows button
+          DEBUG(
+              (EFI_D_ERROR, "%d Menuentries are marked as active\n",
+              GetActiveMenuEntryLength()));
+          DEBUG((EFI_D_ERROR, "SelectedIndex is: %d\n", SelectedIndex));
           break;
         case CHAR_BACKSPACE:
           // back button
+          FallBack = TRUE;
           break;
         default:
           break;
@@ -216,12 +220,27 @@ void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   
   Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
   ASSERT_EFI_ERROR(Status);
-  MenuOptions[Index++] = (MenuEntry){L"Reboot to CLK", TRUE, &NullFunction};
-  MenuOptions[Index++] = (MenuEntry){L"Reboot", TRUE, &ResetCold};
-  MenuOptions[Index++] = (MenuEntry){L"Shutdown", TRUE, &ResetShutdown};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Reboot to CLK", TRUE, &NullFunction};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Reboot", TRUE, &ResetCold};
+  MenuOptions[Index++] = (MenuEntry){Index, L"Shutdown", TRUE, &htcleo_shutdown};
   // Fill disabled options
   do {
-    MenuOptions[Index++] = (MenuEntry){L"", FALSE, &NullFunction};
+    MenuOptions[Index++] = (MenuEntry){Index, L"", FALSE, &NullFunction};
+  }while(Index < MAX_OPTIONS_COUNT);
+}
+
+void SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  SelectedIndex     = 0;
+  UINT8 Index = 0;
+  EFI_STATUS Status = EFI_SUCCESS;
+  
+  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
+  ASSERT_EFI_ERROR(Status);
+  MenuOptions[Index++] = (MenuEntry){Index, L"Set AD SD dir", TRUE, &SetAndroidSdDir};
+  // Fill disabled options
+  do {
+    MenuOptions[Index++] = (MenuEntry){Index, L"", FALSE, &NullFunction};
   }while(Index < MAX_OPTIONS_COUNT);
 }
 
@@ -252,81 +271,19 @@ void BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }
 }
 
-
-/**
-  Periodic timer callback function to feed the watchdog.
-
-  @param Event   The event that triggered the callback.
-  @param Context Optional context parameter, not used here.
-**/
-VOID
-EFIAPI
-FeedWatchdogCallback (
-  IN EFI_EVENT Event,
-  IN VOID      *Context
-  )
-{
-    EFI_STATUS Status;
-
-    Status = WatchdogTimer->SetTimerPeriod(WatchdogTimer, TimerPeriod);
-    if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to feed the watchdog: %r\n", Status));
-    }
-}
-
 EFI_STATUS EFIAPI
 ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   EFI_STATUS Status;
   EFI_INPUT_KEY key;
   UINT32 Timeout = 400; //TODO: Get from pcd
-  EFI_EVENT TimerEvent;
-
-    Status = gBS->LocateProtocol(&gEfiWatchdogTimerArchProtocolGuid, NULL, (VOID **)&WatchdogTimer);
-    if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to locate Watchdog Timer protocol: %r\n", Status));
-        return Status;
-    }
-
-    Status = WatchdogTimer->SetTimerPeriod(WatchdogTimer, TimerPeriod);
-    if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to set initial watchdog timer period: %r\n", Status));
-        return Status;
-    }
-
-
-    Status = gBS->CreateEvent(
-                    EVT_TIMER | EVT_NOTIFY_SIGNAL,
-                    TPL_CALLBACK,
-                    FeedWatchdogCallback,
-                    NULL,
-                    &TimerEvent
-                 );
-    if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to create periodic timer event: %r\n", Status));
-        return Status;
-    }
-
-    Status = gBS->SetTimer(TimerEvent, TimerPeriodic, 60 * 10 * 1000 * 1000);
-    if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to set periodic timer: %r\n", Status));
-        gBS->CloseEvent(TimerEvent);
-        return Status;
-    }
-
-  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
-  ASSERT_EFI_ERROR(Status);
+  CHAR16 *LoadedDir;
 
   Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
   Print(L" Back key to boot from ESP\n");
   Print(L" Power key to boot to builtin UEFI Shell\n");
 
   do {
-    Status = SystemTable->ConOut->SetCursorPosition(SystemTable->ConOut, 0, 0);
-    ASSERT_EFI_ERROR(Status);
-
-    Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
-
     Status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
 
     if (Status != EFI_NOT_READY) {
@@ -350,7 +307,7 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     // TODO: Use events?
     MicroSecondDelay(10000);
     Timeout--;
-  } while (Timeout > 0);
+  }while(Timeout);
 
 boot_esp:
   BootDefault(ImageHandle, SystemTable);
@@ -359,6 +316,15 @@ boot_esp:
   Print(L" Could not boot from ESP, loading menu\n");
 
 menu:
+      // Load previously selected directory
+    Status = LoadSelectedDirFromFile(&SelectedDir);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to load selected directory from file: %r\n", Status));
+        //fallback to root dir of sdcard
+        CHAR16* FallBackPath = L"\\";
+        FallBack = TRUE;
+        *SelectedDir = *FallBackPath;
+    }
   // Fill main menu
   FillMenu();
 
