@@ -604,7 +604,7 @@ UdcInterrupt (
 	unsigned n = readl(USB_USBSTS);
 	writel(n, USB_USBSTS);
 
-    DEBUG((EFI_D_ERROR, "udc_interrupt()\n"));
+    //EBUG((EFI_D_ERROR, "udc_interrupt()\n"));
     
 	n &= (STS_SLI | STS_URI | STS_PCI | STS_UI | STS_UEI);
 
@@ -691,7 +691,7 @@ UdcInterrupt (
 		}
 	}
 end:
-	DEBUG((EFI_D_ERROR, "udc_interrupt() END......\n"));
+	DBG1("-- end --\n");
 	//return ret;
 }
 
