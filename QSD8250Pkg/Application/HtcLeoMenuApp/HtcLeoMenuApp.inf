@@ -19,6 +19,7 @@
   Booter/AndroidKernel.c
   Booter/WinCeKernel.c
   Booter/SdLoader.c
+  # Fastboot/Fastboot.c
 
 [Packages]
   ArmPkg/ArmPkg.dec

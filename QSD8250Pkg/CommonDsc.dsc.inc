@@ -159,7 +159,7 @@
   FrameBufferBltLib|MdeModulePkg/Library/FrameBufferBltLib/FrameBufferBltLib.inf
   MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
   FrameBufferConfigLib|QSD8250Pkg/Library/FrameBufferConfigLib/FrameBufferConfigLib.inf
-  
+
   # Little kernel libraries
   MsmPcomLib|QSD8250Pkg/Library/MsmPcomLib/MsmPcomLib.inf
   MsmPcomClientLib|QSD8250Pkg/Library/MsmPcomClientLib/MsmPcomClientLib.inf
@@ -562,7 +562,7 @@
   MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
   MdeModulePkg/Universal/Acpi/AcpiPlatformDxe/AcpiPlatformDxe.inf
   MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
-  QSD8250Pkg/AcpiTables/AcpiTables.inf
+  # QSD8250Pkg/AcpiTables/AcpiTables.inf
 
   #
   # SMBIOS Support

@@ -12,15 +12,24 @@ void
 FillMenu()
 {
   UINTN Index = 0;
-  MenuOptions[Index++] = (MenuEntry){Index, L"Boot default", TRUE, &BootDefault};
-  MenuOptions[Index++] = (MenuEntry){Index, L"Boot Android", TRUE, &BootAndroidKernel};
-  MenuOptions[Index++] = (MenuEntry){Index, L"Play Tetris", TRUE, &StartTetris};
-  MenuOptions[Index++] = (MenuEntry){Index, L"EFI Shell", TRUE, &StartShell},
-  MenuOptions[Index++] = (MenuEntry){Index, L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
-  MenuOptions[Index++] = (MenuEntry){Index, L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
-  MenuOptions[Index++] = (MenuEntry){Index, L"Reboot Menu", TRUE, &RebootMenu};
-  MenuOptions[Index++] = (MenuEntry){Index, L"Settings", TRUE, &SettingsMenu};
-  MenuOptions[Index++] = (MenuEntry){Index, L"Exit", TRUE, &ExitMenu};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Boot default", TRUE, &BootDefault};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Boot Android", TRUE, &BootAndroidKernel};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Play Tetris", TRUE, &StartTetris};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"EFI Shell", TRUE, &StartShell},
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Reboot Menu", TRUE, &RebootMenu};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Settings", TRUE, &SettingsMenu};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Exit", TRUE, &ExitMenu};
 }
 
 void PrepareConsole(
@@ -215,17 +224,20 @@ void StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   SelectedIndex     = 0;
-  UINT8 Index = 0;
+  UINT8 Index = 1;
   EFI_STATUS Status = EFI_SUCCESS;
   
   Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
   ASSERT_EFI_ERROR(Status);
-  MenuOptions[Index++] = (MenuEntry){Index, L"Reboot to CLK", TRUE, &NullFunction};
-  MenuOptions[Index++] = (MenuEntry){Index, L"Reboot", TRUE, &ResetCold};
-  MenuOptions[Index++] = (MenuEntry){Index, L"Shutdown", TRUE, &htcleo_shutdown};
+  MenuOptions[Index] = (MenuEntry){Index, L"Reboot to CLK", TRUE, &NullFunction};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Reboot", TRUE, &ResetCold};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Shutdown", TRUE, &NullFunction};//&htcleo_shutdown};
   // Fill disabled options
   do {
-    MenuOptions[Index++] = (MenuEntry){Index, L"", FALSE, &NullFunction};
+    Index++;
+    MenuOptions[Index] = (MenuEntry){Index, L"", FALSE, &NullFunction};
   }while(Index < MAX_OPTIONS_COUNT);
 }
 
@@ -237,10 +249,12 @@ void SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   
   Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
   ASSERT_EFI_ERROR(Status);
-  MenuOptions[Index++] = (MenuEntry){Index, L"Set AD SD dir", TRUE, &SetAndroidSdDir};
+  Index++;
+  MenuOptions[Index] = (MenuEntry){Index, L"Set AD SD dir", TRUE, &SetAndroidSdDir};
   // Fill disabled options
   do {
-    MenuOptions[Index++] = (MenuEntry){Index, L"", FALSE, &NullFunction};
+    Index++;
+    MenuOptions[Index] = (MenuEntry){Index, L"", FALSE, &NullFunction};
   }while(Index < MAX_OPTIONS_COUNT);
 }
 
