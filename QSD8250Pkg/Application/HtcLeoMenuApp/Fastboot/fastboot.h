@@ -29,6 +29,8 @@
 #ifndef __APP_FASTBOOT_H
 #define __APP_FASTBOOT_H
 
+#define FASTBOOT_COMMAND_MAX_LENGTH 64
+
 int fastboot_init(void *xfer_buffer, unsigned max);
 
 /* register a command handler 

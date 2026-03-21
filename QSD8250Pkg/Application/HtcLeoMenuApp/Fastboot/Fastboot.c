@@ -1,8 +1,3 @@
-#include "../menu.h"
-#include "fastboot.h"
-#include <Library/Lk/LKEnvLib.h>
-
-// LK CODE START
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
@@ -31,19 +26,13 @@
  * SUCH DAMAGE.
  */
 
-/*#include <debug.h>
-#include <string.h>
-#include <stdlib.h>
-#include <kernel/thread.h>
-#include <kernel/event.h>
-#include <dev/udc.h>*/
+#include "../menu.h"
+#include "fastboot.h"
+
+#include <Library/Lk/LKEnvLib.h>
 #include <Library/MallocLib.h>
 #include <Library/LcmLib.h>
 #include <Library/udc.h>
-
-//void boot_linux(void *bootimg, unsigned sz);
-
-#define FASTBOOT_COMMAND_MAX_LENGTH 64
 
 /* todo: give lk strtoul and nuke this */
 static unsigned hex2unsigned(const char *x)
@@ -116,10 +105,7 @@ void fastboot_publish(const char *name, const char *value)
 	}
 }
 
-
-//static event_t usb_online;
 EFI_EVENT usb_online = NULL;
-//static event_t txn_done;
 EFI_EVENT txn_done = NULL;
 
 static unsigned char buffer[4096];
@@ -142,10 +128,8 @@ static void req_complete(struct udc_request *req, unsigned actual, int status)
 {
 	txn_status = status;
 	req->length = actual;
-	//event_signal(&txn_done, 0);
-	// FUCK ME
-	gBS->SignalEvent (txn_done);
 
+	gBS->SignalEvent (txn_done);
 }
 
 static int usb_read(void *_buf, unsigned len)
@@ -155,8 +139,6 @@ static int usb_read(void *_buf, unsigned len)
 	unsigned char *buf = _buf;
 	int count = 0;
     UINTN EventIndex;
-
-	DEBUG((EFI_D_ERROR, "fastboot: usb_read()\n"));
 
 	if (fastboot_state == STATE_ERROR)
 		goto oops;
@@ -169,7 +151,6 @@ static int usb_read(void *_buf, unsigned len)
 		r = udc_request_queue(out, req);
 		if (r < 0) {
 			dprintf(INFO, "usb_read() queue failed\n");
-			DEBUG((EFI_D_ERROR, "fastboot: usb_read() queue failed\n"));
 			goto oops;
 		}
 		//event_wait(&txn_done);
@@ -229,15 +210,12 @@ void fastboot_ack(const char *code, const char *reason)
 {
 	STACKBUF_DMA_ALIGN(Response, FASTBOOT_COMMAND_MAX_LENGTH);
 
-	//char response[64];
-
 	if (fastboot_state != STATE_COMMAND)
 		return;
 
 	if (reason == 0)
 		reason = "";
 
-	//snprintf(response, 64, "%s%s", code, reason);
 	AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", code, reason);
 	fastboot_state = STATE_COMPLETE;
 
@@ -278,7 +256,7 @@ static void cmd_getvar(const char *arg, void *data, unsigned sz)
 
 static void cmd_download(const char *arg, void *data, unsigned sz)
 {
-	char response[64];
+	char response[FASTBOOT_COMMAND_MAX_LENGTH];
 	unsigned len = hex2unsigned(arg);
 	int r;
 
@@ -312,15 +290,14 @@ static void fastboot_command_loop(void)
 
 again:
 	while (fastboot_state != STATE_ERROR) {
-		SetMem(Buffer, 64, 0);
-		InvalidateDataCacheRange(Buffer, 64);
+		SetMem(Buffer, FASTBOOT_COMMAND_MAX_LENGTH, 0);
+		InvalidateDataCacheRange(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 
-		r = usb_read(Buffer, 64);
+		r = usb_read(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 		if (r < 0)
 			break;
 		Buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", Buffer);
-        DEBUG((EFI_D_ERROR, "fastboot: %s\n", Buffer));
 
 		for (cmd = cmdlist; cmd; cmd = cmd->next) {
 			if (memcmp(Buffer, cmd->prefix, cmd->prefix_len))
@@ -345,7 +322,6 @@ static int fastboot_handler(void *arg)
 	for (;;) {
         UINTN EventIndex;
 
-		//event_wait(&usb_online);
         gBS->WaitForEvent (1, &usb_online, &EventIndex);
 		fastboot_command_loop();
 	}
@@ -355,7 +331,6 @@ static int fastboot_handler(void *arg)
 static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 {
 	if (event == UDC_EVENT_ONLINE) {
-		//event_signal(&usb_online, 0);
         gBS->SignalEvent (usb_online);
 	}
 }
@@ -375,7 +350,6 @@ static struct udc_gadget fastboot_gadget = {
 int fastboot_init(void *base, unsigned size)
 {
     EFI_STATUS Status = EFI_SUCCESS;
-	//thread_t *thr;
 	dprintf(INFO, "fastboot_init()\n");
 
 	download_base = base;
@@ -409,13 +383,8 @@ int fastboot_init(void *base, unsigned size)
 	fastboot_register("download:", cmd_download);
 	fastboot_publish("version", "0.5");
 
-	DEBUG((EFI_D_ERROR, "udc_start()\n"));
 	udc_start();
 
-	//thr = thread_create("fastboot", fastboot_handler, 0, DEFAULT_PRIORITY, 4096);
-	//thread_resume(thr);
-
-    DEBUG((EFI_D_ERROR, "start handler\n"));
     fastboot_handler(NULL); // we don't use threads so just loop
 
 	return 0;
@@ -430,105 +399,6 @@ fail_alloc_in:
     DEBUG((EFI_D_ERROR, "alloc failed\n"));
 	return -1;
 }
-// LK CODE END
-
-// ABOOT 
-/*
-void aboot_init(const struct app_descriptor *app)
-{
-	unsigned reboot_mode = 0;
-	unsigned disp_init = 0;
-	unsigned usb_init = 0;
-
-	// Setup page size information for nand/emmc reads
-	if (target_is_emmc_boot())
-	{
-		page_size = 2048;
-		page_mask = page_size - 1;
-	}
-	else
-	{
-		page_size = flash_page_size();
-		page_mask = page_size - 1;
-	}
-
-	// Display splash screen if enabled
-	#if DISPLAY_SPLASH_SCREEN
-	display_init();
-	dprintf(INFO, "Diplay initialized\n");
-	disp_init = 1;
-	diplay_image_on_screen();
-	#endif
-
-	// Check if we should do something other than booting up
-	if (keys_get_state(KEY_HOME) != 0)
-		boot_into_recovery = 1;
-	if (keys_get_state(KEY_BACK) != 0)
-		goto fastboot;
-	if (keys_get_state(KEY_CLEAR) != 0)
-		goto fastboot;
-
-	#if NO_KEYPAD_DRIVER
-	// With no keypad implementation, check the status of USB connection.
-	// If USB is connected then go into fastboot mode.
-	usb_init = 1;
-	udc_init(&surf_udc_device);
-	if (usb_cable_status())
-		goto fastboot;
-	#endif
-
-	reboot_mode = check_reboot_mode();
-	if (reboot_mode == RECOVERY_MODE) {
-		boot_into_recovery = 1;
-	} else if(reboot_mode == FASTBOOT_MODE) {
-		goto fastboot;
-	}
-
-	if (target_is_emmc_boot())
-	{
-		boot_linux_from_mmc();
-	}
-	else
-	{
-		recovery_init();
-		boot_linux_from_flash();
-	}
-	dprintf(CRITICAL, "ERROR: Could not do normal boot. Reverting "
-		"to fastboot mode.\n");
-
-fastboot:
-	htcleo_fastboot_init();
-
-	if(!usb_init)
-		udc_init(&surf_udc_device);
-
-	fastboot_register("boot", cmd_boot);
-
-	if (target_is_emmc_boot())
-	{
-		fastboot_register("flash:", cmd_flash_mmc);
-		fastboot_register("erase:", cmd_erase_mmc);
-	}
-	else
-	{
-		fastboot_register("flash:", cmd_flash);
-		fastboot_register("erase:", cmd_erase);
-	}
-
-	fastboot_register("continue", cmd_continue);
-	fastboot_register("reboot", cmd_reboot);
-	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
-	fastboot_publish("product", TARGET(BOARD));
-	fastboot_publish("kernel", "lk");
-
-	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
-	fastboot_init(target_get_scratch_address(), MEMBASE - SCRATCH_ADDR - 0x00100000);
-	udc_start();
-	target_battery_charging_enable(1, 0);
-}
-*/
-
-// ABOOT END
 
 static struct udc_device surf_udc_device = {
 	.vendor_id	= 0x18d1,
@@ -550,26 +420,13 @@ void cmd_boot(const char *arg, void *data, unsigned sz) {
     DEBUG((EFI_D_ERROR, "BOOT CALLED\n"));
 }
 
-void cmd_continue(const char *arg, void *data, unsigned sz) {
-    DEBUG((EFI_D_ERROR, "CONTINUE CALLED\n"));
-	fastboot_okay("");
-}
-
 void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
-    // All necessary code to start listening for commands
-    
-    
-
-    // TODO: Add functions
-    DEBUG((EFI_D_ERROR, "register boot\n"));
     fastboot_register("boot", cmd_boot);
-
-    DEBUG((EFI_D_ERROR, "fastboot publish\n"));
-	fastboot_register("continue", cmd_continue);
+	//fastboot_register("continue", cmd_continue);
 	//fastboot_register("reboot", cmd_reboot);
 	//fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
-	fastboot_publish("product", "EDK2 LEO");//fastboot_publish("product", TARGET(BOARD));
+	fastboot_publish("product", "EDK2 LEO");
 	fastboot_publish("kernel", "lk");
 
 	// Init UDC first
@@ -577,56 +434,6 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     udc_init(&surf_udc_device);
 
 	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
-    DEBUG((EFI_D_ERROR, "fastboot init()\n"));
 	//fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
 	fastboot_init((void *)SCRATCH_ADDR, 0x00040000);
-
-    //DEBUG((EFI_D_ERROR, "udc_start()\n"));
-	//udc_start();
 }
-
-#if 0
-VOID
-FastbootInit (
-  VOID
-)
-{
-  EFI_STATUS Status;
-  INT32 r;
-
-  MenuShowProgressDialog("Starting Fastboot", TRUE);
-
-  mFastbootState = STATE_OFFLINE;
-  Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
-  ASSERT_EFI_ERROR (Status);
-
-  mUsbInterface = mLKApi->usbgadget_get_interface();
-  ASSERT(mUsbInterface);
-
-  FastbootRegister("oem help", CommandHelp);
-  FastbootRegister("getvar:", CommandGetVar);
-  FastbootRegister("download:", CommandDownload);
-  FastbootPublish("version", "0.5");
-
-  // we use dynamic allocations, so report the highest possible value
-  FastbootPublish("max-download-size", "0xffffffff");
-
-  surf_udc_device.serialno = AsciiStrDup("EFIDroid");
-  r = mUsbInterface->udc_init(mUsbInterface, &surf_udc_device);
-  ASSERT(r==0);
-  r= mUsbInterface->udc_register_gadget(mUsbInterface, &fastboot_gadget);
-  ASSERT(r==0);
-  r = mUsbInterface->udc_start(mUsbInterface);
-  ASSERT(r==0);
-
-  Status = gBS->CreateEvent (EVT_SIGNAL_EXIT_BOOT_SERVICES, TPL_NOTIFY, ExitBootServicesEvent, NULL, &mExitBootServicesEvent);
-  ASSERT_EFI_ERROR (Status);
-
-  FastbootHandler();
-
-  if (mFastbootState!=STATE_STOPPED) {
-    Status = gBS->CloseEvent(mExitBootServicesEvent);
-    mUsbInterface->udc_stop(mUsbInterface);
-  }
-}
-#endif

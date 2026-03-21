@@ -600,11 +600,8 @@ UdcInterrupt (
   )
 {
 	struct udc_endpoint *ept;
-	//unsigned ret = INT_NO_RESCHEDULE;
 	unsigned n = readl(USB_USBSTS);
 	writel(n, USB_USBSTS);
-
-    //EBUG((EFI_D_ERROR, "udc_interrupt()\n"));
     
 	n &= (STS_SLI | STS_URI | STS_PCI | STS_UI | STS_UEI);
 
@@ -675,7 +672,6 @@ UdcInterrupt (
 		n = readl(USB_ENDPTSETUPSTAT);
 		if (n & EPT_RX(0)) {
 			handle_setup(ep0out);
-			//ret = INT_RESCHEDULE;
 		}
 
 		n = readl(USB_ENDPTCOMPLETE);
@@ -686,13 +682,11 @@ UdcInterrupt (
 		for (ept = ept_list; ept; ept = ept->next){
 			if (n & ept->bit) {
 				handle_ept_complete(ept);
-				//ret = INT_RESCHEDULE;
 			}
 		}
 	}
 end:
 	DBG1("-- end --\n");
-	//return ret;
 }
 
 int udc_register_gadget(struct udc_gadget *gadget)
