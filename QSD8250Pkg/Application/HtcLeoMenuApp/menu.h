@@ -1,5 +1,3 @@
-#ifndef _MAIN_MENU_H_
-#define _MAIN_MENU_H_
 #include <Uefi.h>
 #include <PiDxe.h>
 #include <Library/UefiLib.h>
@@ -24,9 +22,6 @@
 #include <Chipset/timer.h>
 #include <Library/PrintLib.h>
 #include <Protocol/WatchdogTimer.h>
-
-#ifndef _MAIN_MENU_H_
-#define _MAIN_MENU_H_
 
 typedef struct {
   CHAR16 *Name;
@@ -65,5 +60,3 @@ EFI_STATUS ReadMemoryAndWriteToFile(UINTN* MemoryAddress,UINTN Length, CHAR16 *F
 CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message);
 
 VOID EFIAPI FeedWatchdogCallback (IN EFI_EVENT Event,IN VOID      *Context);
-
-#endif

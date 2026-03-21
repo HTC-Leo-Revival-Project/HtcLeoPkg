@@ -163,7 +163,6 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
           break;
         case CHAR_BACKSPACE:
           // back button
-          FallBack = TRUE;
           break;
         default:
           break;
