@@ -14,11 +14,6 @@
   HexInput.c
   MemoryTools.c
   menu.c
-  Booter/LinuxShim.S
-  Booter/AndroidSDDir.c
-  Booter/AndroidKernel.c
-  Booter/WinCeKernel.c
-  Booter/SdLoader.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -39,16 +34,10 @@
   ResetSystemLib
   UefiBootManagerLib
   DevicePathLib
-  FrameBufferConfigLib
-  MallocLib
-  LcmLib
-  LkLib
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
-  gArmTokenSpaceGuid.PcdSystemMemoryBase
-  gArmTokenSpaceGuid.PcdSystemMemorySize
 
 [Protocols]
   gEfiGraphicsOutputProtocolGuid                ## CONSUMES

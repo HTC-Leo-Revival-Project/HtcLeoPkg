@@ -1,2 +1,0 @@
-//UINTN ArmPlatformGetCorePosition
-VOID PrepareForLinux();

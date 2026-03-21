@@ -1,21 +1,21 @@
 #include "menu.h"
 #include "BootApp.h"
-#include "Booter/AndroidSDDir.h"
 
 MenuEntry MenuOptions[MAX_OPTIONS_COUNT] = {0};
 
 UINTN MenuOptionCount = 0;
 UINTN SelectedIndex = 0;
 EFI_SIMPLE_TEXT_OUTPUT_MODE InitialMode;
+EFI_WATCHDOG_TIMER_ARCH_PROTOCOL *WatchdogTimer;
+UINT64 TimerPeriod = 120 * 10 * 1000 * 1000;
+UINT64 FeedInterval = 60 * 1000 * 1000;
 
 void
 FillMenu()
 {
   UINTN Index = 0;
-
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
   MenuOptions[Index++] = (MenuEntry){L"Fastboot", TRUE, &StartFastbootApp};
-  MenuOptions[Index++] = (MenuEntry){L"Boot android kernel", TRUE, &BootAndroidKernel};
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
@@ -234,22 +234,6 @@ void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }while(Index < MAX_OPTIONS_COUNT);
 }
 
-void SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
-{
-  SelectedIndex     = 0;
-  UINT8 Index = 0;
-  EFI_STATUS Status = EFI_SUCCESS;
-  
-  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
-  ASSERT_EFI_ERROR(Status);
-  Index++;
-  MenuOptions[Index] = (MenuEntry){L"Set AD SD dir", TRUE, &SetAndroidSdDir};
-  // Fill disabled options
-  do {
-    MenuOptions[Index++] = (MenuEntry){L"", FALSE, &NullFunction};
-  }while(Index < MAX_OPTIONS_COUNT);
-}
-
 void NullFunction()
 {
   //Print(L"Feature not supported yet!");
@@ -277,19 +261,80 @@ void BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }
 }
 
+/**
+  Periodic timer callback function to feed the watchdog.
+
+  @param Event   The event that triggered the callback.
+  @param Context Optional context parameter, not used here.
+**/
+VOID
+EFIAPI
+FeedWatchdogCallback (
+  IN EFI_EVENT Event,
+  IN VOID      *Context
+  )
+{
+    EFI_STATUS Status;
+
+    Status = WatchdogTimer->SetTimerPeriod(WatchdogTimer, TimerPeriod);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to feed the watchdog: %r\n", Status));
+    }
+}
+
 EFI_STATUS EFIAPI
 ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   EFI_STATUS Status;
   EFI_INPUT_KEY key;
   UINT32 Timeout = 400; //TODO: Get from pcd
-  CHAR16 *LoadedDir;
+   EFI_EVENT TimerEvent;
+
+    Status = gBS->LocateProtocol(&gEfiWatchdogTimerArchProtocolGuid, NULL, (VOID **)&WatchdogTimer);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to locate Watchdog Timer protocol: %r\n", Status));
+        return Status;
+    }
+
+    Status = WatchdogTimer->SetTimerPeriod(WatchdogTimer, TimerPeriod);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to set initial watchdog timer period: %r\n", Status));
+        return Status;
+    }
+
+
+    Status = gBS->CreateEvent(
+                    EVT_TIMER | EVT_NOTIFY_SIGNAL,
+                    TPL_CALLBACK,
+                    FeedWatchdogCallback,
+                    NULL,
+                    &TimerEvent
+                 );
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to create periodic timer event: %r\n", Status));
+        return Status;
+    }
+
+    Status = gBS->SetTimer(TimerEvent, TimerPeriodic, 60 * 10 * 1000 * 1000);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to set periodic timer: %r\n", Status));
+        gBS->CloseEvent(TimerEvent);
+        return Status;
+    }
+
+  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
+  ASSERT_EFI_ERROR(Status);
 
   Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
   Print(L" Back key to boot from ESP\n");
   Print(L" Power key to boot to builtin UEFI Shell\n");
 
   do {
+    Status = SystemTable->ConOut->SetCursorPosition(SystemTable->ConOut, 0, 0);
+    ASSERT_EFI_ERROR(Status);
+
+    Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
+
     Status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
 
     if (Status != EFI_NOT_READY) {
@@ -313,7 +358,7 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     // TODO: Use events?
     MicroSecondDelay(10000);
     Timeout--;
-  }while(Timeout);
+  } while (Timeout > 0);
 
 boot_esp:
   BootDefault(ImageHandle, SystemTable);
