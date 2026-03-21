@@ -405,6 +405,9 @@ int fastboot_init(void *base, unsigned size)
 	fastboot_register("download:", cmd_download);
 	fastboot_publish("version", "0.5");
 
+	DEBUG((EFI_D_ERROR, "udc_start()\n"));
+	udc_start();
+
 	//thr = thread_create("fastboot", fastboot_handler, 0, DEFAULT_PRIORITY, 4096);
 	//thread_resume(thr);
 
@@ -547,9 +550,7 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
     // All necessary code to start listening for commands
     
-    // Init UDC first
-    DEBUG((EFI_D_ERROR, "udc_init()\n"));
-    udc_init(&surf_udc_device);
+    
 
     // TODO: Add functions
     DEBUG((EFI_D_ERROR, "register boot\n"));
@@ -562,10 +563,60 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 	fastboot_publish("product", "EDK2 LEO");//fastboot_publish("product", TARGET(BOARD));
 	fastboot_publish("kernel", "lk");
 
+	// Init UDC first
+    DEBUG((EFI_D_ERROR, "udc_init()\n"));
+    udc_init(&surf_udc_device);
+
 	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
     DEBUG((EFI_D_ERROR, "fastboot init()\n"));
 	fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
 
-    DEBUG((EFI_D_ERROR, "udc_start()\n"));
-	udc_start();
+    //DEBUG((EFI_D_ERROR, "udc_start()\n"));
+	//udc_start();
 }
+
+#if 0
+VOID
+FastbootInit (
+  VOID
+)
+{
+  EFI_STATUS Status;
+  INT32 r;
+
+  MenuShowProgressDialog("Starting Fastboot", TRUE);
+
+  mFastbootState = STATE_OFFLINE;
+  Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
+  ASSERT_EFI_ERROR (Status);
+
+  mUsbInterface = mLKApi->usbgadget_get_interface();
+  ASSERT(mUsbInterface);
+
+  FastbootRegister("oem help", CommandHelp);
+  FastbootRegister("getvar:", CommandGetVar);
+  FastbootRegister("download:", CommandDownload);
+  FastbootPublish("version", "0.5");
+
+  // we use dynamic allocations, so report the highest possible value
+  FastbootPublish("max-download-size", "0xffffffff");
+
+  surf_udc_device.serialno = AsciiStrDup("EFIDroid");
+  r = mUsbInterface->udc_init(mUsbInterface, &surf_udc_device);
+  ASSERT(r==0);
+  r= mUsbInterface->udc_register_gadget(mUsbInterface, &fastboot_gadget);
+  ASSERT(r==0);
+  r = mUsbInterface->udc_start(mUsbInterface);
+  ASSERT(r==0);
+
+  Status = gBS->CreateEvent (EVT_SIGNAL_EXIT_BOOT_SERVICES, TPL_NOTIFY, ExitBootServicesEvent, NULL, &mExitBootServicesEvent);
+  ASSERT_EFI_ERROR (Status);
+
+  FastbootHandler();
+
+  if (mFastbootState!=STATE_STOPPED) {
+    Status = gBS->CloseEvent(mExitBootServicesEvent);
+    mUsbInterface->udc_stop(mUsbInterface);
+  }
+}
+#endif
