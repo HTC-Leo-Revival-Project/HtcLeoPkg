@@ -174,6 +174,7 @@
   MallocLib|QSD8250Pkg/Library/MallocLib/MallocLib.inf
   LcmLib|QSD8250Pkg/Library/LcmLib/LcmLib.inf
   LkLib|QSD8250Pkg/Library/LkLib/LkLib.inf
+  InterruptsLib|QSD8250Pkg/Library/InterruptsLib/InterruptsLib.inf
   # QcomPlatformUsbLib|QSD8250Pkg/Library/QcomPlatformUsbLib/QcomPlatformUsbLib.inf
 
 [LibraryClasses.common.SEC]

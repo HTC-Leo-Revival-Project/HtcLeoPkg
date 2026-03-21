@@ -45,6 +45,7 @@
   MallocLib
   LcmLib
   LkLib
+  InterruptsLib
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString

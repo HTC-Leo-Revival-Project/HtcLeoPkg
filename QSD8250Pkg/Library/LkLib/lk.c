@@ -25,6 +25,8 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <Uefi.h>
+//#include <PiDxe.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
@@ -34,6 +36,10 @@
 
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/DevicePathLib.h>
+#include <Library/TimerLib.h>
+
+#include <Chipset/timer.h>
 
 #include <Library/Lk/LKEnvLib.h>
 
@@ -50,7 +56,7 @@ void enter_critical_section(void) {
   OriginalTPL = gBS->RaiseTPL (TPL_HIGH_LEVEL);
 };
 
-void enter_critical_section(void) {
+void exit_critical_section(void) {
   gBS->RestoreTPL (OriginalTPL);
 };
 
@@ -68,4 +74,6 @@ LkLibConstructor()
   // Find the interrupt controller protocol.  ASSERT if not found.
   Status = gBS->LocateProtocol (&gHardwareInterruptProtocolGuid, NULL, (VOID **)&gInterrupt);
   ASSERT_EFI_ERROR (Status);
-}
+
+  return Status;
+};

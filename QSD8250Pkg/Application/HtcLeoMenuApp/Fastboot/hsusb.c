@@ -51,6 +51,8 @@
 #include <Chipset/interrupts.h>
 #include <Library/reg.h>
 
+#include <Library/InterruptsLib.h>
+
 #include "hsusb.h"
 
 #if 1
