@@ -115,8 +115,11 @@ void fastboot_publish(const char *name, const char *value)
 }
 
 
-static event_t usb_online;
-static event_t txn_done;
+//static event_t usb_online;
+EFI_EVENT usb_online = NULL;
+//static event_t txn_done;
+EFI_EVENT txn_done = NULL;
+
 static unsigned char buffer[4096];
 static struct udc_endpoint *in, *out;
 static struct udc_request *req;
@@ -137,7 +140,8 @@ static void req_complete(struct udc_request *req, unsigned actual, int status)
 {
 	txn_status = status;
 	req->length = actual;
-	event_signal(&txn_done, 0);
+	//event_signal(&txn_done, 0);
+
 }
 
 static int usb_read(void *_buf, unsigned len)
@@ -146,6 +150,7 @@ static int usb_read(void *_buf, unsigned len)
 	unsigned xfer;
 	unsigned char *buf = _buf;
 	int count = 0;
+    UINTN EventIndex;
 
 	if (fastboot_state == STATE_ERROR)
 		goto oops;
@@ -160,7 +165,8 @@ static int usb_read(void *_buf, unsigned len)
 			dprintf(INFO, "usb_read() queue failed\n");
 			goto oops;
 		}
-		event_wait(&txn_done);
+		//event_wait(&txn_done);
+        gBS->WaitForEvent (1, &txn_done, &EventIndex);
 
 		if (txn_status < 0) {
 			dprintf(INFO, "usb_read() transaction failed\n");
@@ -185,6 +191,7 @@ oops:
 static int usb_write(void *buf, unsigned len)
 {
 	int r;
+    UINTN EventIndex;
 
 	if (fastboot_state == STATE_ERROR)
 		goto oops;
@@ -197,7 +204,8 @@ static int usb_write(void *buf, unsigned len)
 		dprintf(INFO, "usb_write() queue failed\n");
 		goto oops;
 	}
-	event_wait(&txn_done);
+	//event_wait(&txn_done);
+    gBS->WaitForEvent (1, &txn_done, &EventIndex);
 	if (txn_status < 0) {
 		dprintf(INFO, "usb_write() transaction failed\n");
 		goto oops;
@@ -313,7 +321,10 @@ again:
 static int fastboot_handler(void *arg)
 {
 	for (;;) {
-		event_wait(&usb_online);
+        UINTN EventIndex;
+
+		//event_wait(&usb_online);
+        gBS->WaitForEvent (1, &usb_online, &EventIndex);
 		fastboot_command_loop();
 	}
 	return 0;
@@ -322,7 +333,8 @@ static int fastboot_handler(void *arg)
 static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 {
 	if (event == UDC_EVENT_ONLINE) {
-		event_signal(&usb_online, 0);
+		//event_signal(&usb_online, 0);
+        gBS->SignalEvent (usb_online);
 	}
 }
 
@@ -340,14 +352,19 @@ static struct udc_gadget fastboot_gadget = {
 
 int fastboot_init(void *base, unsigned size)
 {
-	thread_t *thr;
+    EFI_STATUS Status = EFI_SUCCESS;
+	//thread_t *thr;
 	dprintf(INFO, "fastboot_init()\n");
 
 	download_base = base;
 	download_max = size;
 
-	event_init(&usb_online, 0, EVENT_FLAG_AUTOUNSIGNAL);
-	event_init(&txn_done, 0, EVENT_FLAG_AUTOUNSIGNAL);
+	//event_init(&usb_online, 0, EVENT_FLAG_AUTOUNSIGNAL);
+    Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &usb_online);
+    ASSERT_EFI_ERROR(Status);
+	//event_init(&txn_done, 0, EVENT_FLAG_AUTOUNSIGNAL);
+    Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
+    ASSERT_EFI_ERROR(Status);
 
 	in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
 	if (!in)
@@ -372,7 +389,9 @@ int fastboot_init(void *base, unsigned size)
 
 	//thr = thread_create("fastboot", fastboot_handler, 0, DEFAULT_PRIORITY, 4096);
 	//thread_resume(thr);
-    fastboot_handler();
+
+    fastboot_handler(NULL); // we don't use threads so just loop
+
 	return 0;
 
 fail_udc_register:
@@ -492,6 +511,7 @@ static struct udc_device surf_udc_device = {
 	.product	= "LEO EDK2",
 };
 
+#define MEMBASE         0x28000000
 #define BASE_ADDR       0x11800000
 #define TAGS_ADDR       (BASE_ADDR+0x00000100)
 #define KERNEL_ADDR     (BASE_ADDR+0x00008000)
@@ -520,6 +540,6 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 	fastboot_publish("kernel", "lk");
 
 	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
-	fastboot_init(SCRATCH_ADDR, MEMBASE - SCRATCH_ADDR - 0x00100000);
+	fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
 	udc_start();
 };
