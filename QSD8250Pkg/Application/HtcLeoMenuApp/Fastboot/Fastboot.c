@@ -292,6 +292,7 @@ static void fastboot_command_loop(void)
 	struct fastboot_cmd *cmd;
 	int r;
 	dprintf(INFO,"fastboot: processing commands\n");
+    DEBUG((EFI_D_ERROR, "fastboot: processing commands\n"));
 
 again:
 	while (fastboot_state != STATE_ERROR) {
@@ -299,6 +300,7 @@ again:
 		if (r < 0) break;
 		buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", buffer);
+        DEBUG((EFI_D_ERROR, "fastboot: %s\n", buffer));
 
 		for (cmd = cmdlist; cmd; cmd = cmd->next) {
 			if (memcmp(buffer, cmd->prefix, cmd->prefix_len))
@@ -316,15 +318,19 @@ again:
 	}
 	fastboot_state = STATE_OFFLINE;
 	dprintf(INFO,"fastboot: oops!\n");
+    DEBUG((EFI_D_ERROR, "fastboot: oops\n"));
 }
 
+// HERE
 static int fastboot_handler(void *arg)
 {
 	for (;;) {
         UINTN EventIndex;
 
 		//event_wait(&usb_online);
+        DEBUG((EFI_D_ERROR, "fastboot handler: wait for event\n"));
         gBS->WaitForEvent (1, &usb_online, &EventIndex);
+        DEBUG((EFI_D_ERROR, "fastboot_command_loop(): \n"));
 		fastboot_command_loop();
 	}
 	return 0;
@@ -332,8 +338,10 @@ static int fastboot_handler(void *arg)
 
 static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 {
+    DEBUG((EFI_D_ERROR, "fastboot_notify()\n"));
 	if (event == UDC_EVENT_ONLINE) {
 		//event_signal(&usb_online, 0);
+        DEBUG((EFI_D_ERROR, "fastboot_notify(): usb_online!!\n"));
         gBS->SignalEvent (usb_online);
 	}
 }
@@ -356,15 +364,20 @@ int fastboot_init(void *base, unsigned size)
 	//thread_t *thr;
 	dprintf(INFO, "fastboot_init()\n");
 
+    DEBUG((EFI_D_ERROR, "fastboot_init()\n"));
+
 	download_base = base;
 	download_max = size;
 
 	//event_init(&usb_online, 0, EVENT_FLAG_AUTOUNSIGNAL);
+    DEBUG((EFI_D_ERROR, "create events\n"));
     Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &usb_online);
     ASSERT_EFI_ERROR(Status);
 	//event_init(&txn_done, 0, EVENT_FLAG_AUTOUNSIGNAL);
     Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
     ASSERT_EFI_ERROR(Status);
+
+    DEBUG((EFI_D_ERROR, "alloc endpoint\n"));
 
 	in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
 	if (!in)
@@ -373,16 +386,21 @@ int fastboot_init(void *base, unsigned size)
 	if (!out)
 		goto fail_alloc_out;
 
+    DEBUG((EFI_D_ERROR, "alloc SUCCESS!\n"));
+
 	fastboot_endpoints[0] = in;
 	fastboot_endpoints[1] = out;
 
+    DEBUG((EFI_D_ERROR, "udc_request_alloc()\n"));
 	req = udc_request_alloc();
 	if (!req)
 		goto fail_alloc_req;
 
+    DEBUG((EFI_D_ERROR, "udc_register_gadget()\n"));
 	if (udc_register_gadget(&fastboot_gadget))
 		goto fail_udc_register;
 
+     DEBUG((EFI_D_ERROR, "fastboot_register commands\n"));
 	fastboot_register("getvar:", cmd_getvar);
 	fastboot_register("download:", cmd_download);
 	fastboot_publish("version", "0.5");
@@ -390,6 +408,7 @@ int fastboot_init(void *base, unsigned size)
 	//thr = thread_create("fastboot", fastboot_handler, 0, DEFAULT_PRIORITY, 4096);
 	//thread_resume(thr);
 
+    DEBUG((EFI_D_ERROR, "start handler\n"));
     fastboot_handler(NULL); // we don't use threads so just loop
 
 	return 0;
@@ -401,6 +420,7 @@ fail_alloc_req:
 fail_alloc_out:
 	udc_endpoint_free(in);
 fail_alloc_in:
+    DEBUG((EFI_D_ERROR, "alloc failed\n"));
 	return -1;
 }
 // LK CODE END
@@ -520,7 +540,7 @@ static struct udc_device surf_udc_device = {
 
 // placeholder
 void cmd_boot(const char *arg, void *data, unsigned sz) {
-
+    DEBUG((EFI_D_ERROR, "BOOT CALLED\n"));
 }
 
 void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
@@ -528,11 +548,14 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     // All necessary code to start listening for commands
     
     // Init UDC first
+    DEBUG((EFI_D_ERROR, "udc_init()\n"));
     udc_init(&surf_udc_device);
 
     // TODO: Add functions
+    DEBUG((EFI_D_ERROR, "register boot\n"));
     fastboot_register("boot", cmd_boot);
 
+    DEBUG((EFI_D_ERROR, "fastboot publish\n"));
 	/*fastboot_register("continue", cmd_continue);
 	fastboot_register("reboot", cmd_reboot);
 	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);*/
@@ -540,6 +563,9 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 	fastboot_publish("kernel", "lk");
 
 	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
+    DEBUG((EFI_D_ERROR, "fastboot init()\n"));
 	fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
+
+    DEBUG((EFI_D_ERROR, "udc_start()\n"));
 	udc_start();
-};
+}

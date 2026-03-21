@@ -592,6 +592,8 @@ enum handler_return udc_interrupt(void *arg)
 	unsigned ret = INT_NO_RESCHEDULE;
 	unsigned n = readl(USB_USBSTS);
 	writel(n, USB_USBSTS);
+
+    DEBUG((EFI_D_ERROR, "udc_interrupt()\n"));
     
 	n &= (STS_SLI | STS_URI | STS_PCI | STS_UI | STS_UEI);
 
