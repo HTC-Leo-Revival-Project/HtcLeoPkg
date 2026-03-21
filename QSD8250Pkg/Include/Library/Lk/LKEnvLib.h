@@ -124,6 +124,26 @@ typedef unsigned long u_long;
 
 #define snprintf(s, n, fmt, ...) ((int)AsciiSPrint((s), (n), (fmt), ##__VA_ARGS__))
 
+#if !defined(MDEPKG_NDEBUG)
+#define sprintf(fmt, ...) do { \
+                                   if (DebugPrintEnabled ()) { \
+                                     CHAR8 __printbuf[100]; \
+                                     UINTN __printindex; \
+                                     CONST CHAR8 *__fmtptr = (fmt); \
+                                     UINTN __fmtlen = AsciiStrSize(__fmtptr); \
+                                     CopyMem(__printbuf, __fmtptr, __fmtlen); \
+                                     __printbuf[__fmtlen-1] = 0; \
+                                     for(__printindex=1; __printbuf[__printindex]; __printindex++) { \
+                                       if (__printbuf[__printindex-1]=='%' && __printbuf[__printindex]=='s') \
+                                         __printbuf[__printindex] = 'a'; \
+                                     } \
+                                     DEBUG(((EFI_D_ERROR), __printbuf, ##__VA_ARGS__)); \
+                                   } \
+                                 } while(0)   
+#else 
+#define sprintf(fmt, ...)
+#endif
+
 /* debug levels */
 #define CRITICAL DEBUG_ERROR
 #define ALWAYS DEBUG_ERROR
