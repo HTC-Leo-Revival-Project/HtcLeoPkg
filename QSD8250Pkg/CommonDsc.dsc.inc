@@ -171,6 +171,9 @@
   SmemLib|QSD8250Pkg/Drivers/SmemDxe/SmemImplLib.inf
   KeypadDeviceHelperLib|QSD8250Pkg/Library/KeypadDeviceHelperLib/KeypadDeviceHelperLib.inf
   KeypadDeviceImplLib|QSD8250Pkg/Library/KeypadDeviceImplLib/KeypadDeviceImplLib.inf
+  MallocLib|QSD8250Pkg/Library/MallocLib/MallocLib.inf
+  LcmLib|QSD8250Pkg/Library/LcmLib/LcmLib.inf
+  # QcomPlatformUsbLib|QSD8250Pkg/Library/QcomPlatformUsbLib/QcomPlatformUsbLib.inf
 
 [LibraryClasses.common.SEC]
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf

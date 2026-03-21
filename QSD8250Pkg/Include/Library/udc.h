@@ -29,6 +29,9 @@
 #ifndef __DEV_UDC_H
 #define __DEV_UDC_H
 
+//#include <IndustryStandard/Usb.h>
+#include <Library/QcomPlatformUsbLib.h>
+
 /* USB Device Controller Transfer Request */
 struct udc_request {
 	void *buf;
