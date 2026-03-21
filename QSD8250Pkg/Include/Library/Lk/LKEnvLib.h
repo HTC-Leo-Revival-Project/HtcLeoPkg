@@ -198,4 +198,18 @@ typedef unsigned long u_long;
 
 #define __UNUSED //added
 
+// Timer
+#define mdelay(msecs) MicroSecondDelay((msecs)*1000)
+#define udelay(usecs) MicroSecondDelay((usecs))
+
+// LKLib defines
+void enter_critical_section(void);
+void exit_critical_section(void);
+
+#define thread_sleep(secs) MicroSecondDelay(secs) // We don't support threads here so just wait
+
+// Interrupts (duh)
+typedef enum handler_return (*int_handler)(void *arg);
+void register_int_handler(unsigned int vector, int_handler handler, void *arg);
+
 #endif

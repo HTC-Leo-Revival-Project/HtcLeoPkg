@@ -24,7 +24,7 @@ typedef struct {
 
 VOID *memalign(UINTN Boundary, UINTN Size)
 {
-  VOID         *BaseMemory;
+  VOID         *BaseMemory = NULL;
   CPOOL_HEAD   *Head;
   VOID         *RetVal;
   UINTN         HeadSize;

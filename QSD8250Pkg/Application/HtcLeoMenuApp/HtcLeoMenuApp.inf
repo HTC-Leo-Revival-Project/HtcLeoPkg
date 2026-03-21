@@ -42,6 +42,9 @@
   UefiBootManagerLib
   DevicePathLib
   FrameBufferConfigLib
+  MallocLib
+  LcmLib
+  LkLib
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString

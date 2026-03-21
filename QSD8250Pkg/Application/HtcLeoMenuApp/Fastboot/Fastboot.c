@@ -37,10 +37,12 @@
 #include <kernel/thread.h>
 #include <kernel/event.h>
 #include <dev/udc.h>*/
+#include <Library/MallocLib.h>
+#include <Library/LcmLib.h>
 #include <Library/udc.h>
 
 //void boot_linux(void *bootimg, unsigned sz);
-
+#if 0
 /* todo: give lk strtoul and nuke this */
 static unsigned hex2unsigned(const char *x)
 {
@@ -481,8 +483,20 @@ fastboot:
 
 // ABOOT END
 
+#endif 
+
+static struct udc_device surf_udc_device = {
+	.vendor_id	= 0x18d1,
+	.product_id	= 0x0D02,
+	.version_id	= 0x0001,
+	.manufacturer	= "HTC",
+	.product	= "LEO EDK2",
+};
 
 void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
     // All necessary code to start listening for commands
+    
+    // Init UDC first
+    udc_init(&surf_udc_device);
 };

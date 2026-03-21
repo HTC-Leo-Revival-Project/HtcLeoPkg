@@ -42,6 +42,8 @@
 #include "hsusb.h"*/
 
 #include <Library/Lk/LKEnvLib.h>
+#include <Library/MallocLib.h>
+#include <Library/LcmLib.h>
 #include <Library/udc.h>
 
 #include <Chipset/iomap.h>
@@ -50,6 +52,16 @@
 #include <Library/reg.h>
 
 #include "hsusb.h"
+
+#if 1
+#define DBG(x...) do {} while(0)
+#else
+#define DBG(x...) dprintf(INFO, x)
+#endif
+
+#define DBG1(x...) dprintf(INFO, x)
+
+#define usb_status(a,b)
 
 int charger_usb_disconnected(void);
 int charger_usb_i(unsigned current);
@@ -122,21 +134,6 @@ unsigned udc_string_desc_alloc(const char *str)
 }
 
 /* end of common code */
-
-__WEAK void hsusb_clock_init(void)
-{
-	return 0;
-}
-
-#if 1
-#define DBG(x...) do {} while(0)
-#else
-#define DBG(x...) dprintf(INFO, x)
-#endif
-
-#define DBG1(x...) dprintf(INFO, x)
-
-#define usb_status(a,b)
 
 struct usb_request {
 	struct udc_request req;
@@ -537,7 +534,7 @@ void board_ulpi_init(void);
 
 int udc_init(struct udc_device *dev) 
 {
-	hsusb_clock_init();
+	//hsusb_clock_init(); unused here?? TODO
 
 	epts = memalign(4096, 4096);
 
