@@ -287,6 +287,27 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+unsigned ulpi_read(unsigned reg)
+{
+	/* initiate read operation */
+	writel(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg), USB_ULPI_VIEWPORT);
+
+	/* wait for completion */
+	while (readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
+
+	return ULPI_DATA_READ(readl(USB_ULPI_VIEWPORT));
+}
+
+void ulpi_write(unsigned val, unsigned reg)
+{
+	/* initiate write operation */
+	writel(ULPI_RUN | ULPI_WRITE |
+	       ULPI_ADDR(reg) | ULPI_DATA(val), USB_ULPI_VIEWPORT);
+
+	/* wait for completion */
+	while (readl(USB_ULPI_VIEWPORT) & ULPI_RUN) ;
+}
+
 static void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
@@ -294,9 +315,15 @@ static void fastboot_command_loop(void)
 	dprintf(INFO,"fastboot: processing commands\n");
     DEBUG((EFI_D_ERROR, "fastboot: processing commands\n"));
 
+	UINT8* Buffer = AllocateAlignedPages(ArmDataCacheLineLength(), ROUNDUP(4096, ArmDataCacheLineLength()));
+    ASSERT(Buffer);
+
 again:
 	while (fastboot_state != STATE_ERROR) {
-		r = usb_read(buffer, 64);
+		SetMem(Buffer, 64, 0);
+		InvalidateDataCacheRange(Buffer, 64);
+
+		r = usb_read(Buffer, 64);
 		if (r < 0) break;
 		buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", buffer);
@@ -574,7 +601,8 @@ void StartFastboot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 
 	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
     DEBUG((EFI_D_ERROR, "fastboot init()\n"));
-	fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
+	//fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
+	fastboot_init((void *)SCRATCH_ADDR, 0x00040000);
 
     //DEBUG((EFI_D_ERROR, "udc_start()\n"));
 	//udc_start();
