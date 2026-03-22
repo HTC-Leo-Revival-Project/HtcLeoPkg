@@ -26,6 +26,8 @@
 UEFI can be either chainloaded as a kernel from cLK, as well as flashed to boot directly from HSPL.
 However flashing as a HSPL image on HD7 is more complicated
 
+## Build requirements (Ubuntu 24.04)
+ - build-essential uuid-dev iasl git nasm python-is-python3 gettext gcc-arm-linux-gnueabihf lld clang llvm device-tree-compiler adb fastboot binutils-arm-linux-gnueabi
 ## Credits
  - Cotulla and DFT for the work on HD2
  - cedesmith for creating the lk port for Leo, kokotas on further work
