@@ -23,9 +23,6 @@
 #include <Library/PrintLib.h>
 #include <Protocol/WatchdogTimer.h>
 
-#ifndef _MAIN_MENU_H_
-#define _MAIN_MENU_H_
-
 typedef struct {
   CHAR16 *Name;
   BOOLEAN IsActive;
@@ -54,13 +51,12 @@ void NullFunction();
 void BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void StartShell(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpMemory2Sdcard(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpMemory2SdcardHelper(UINTN* hexval, CHAR16** hexstring, UINTN* length, IN EFI_SYSTEM_TABLE *SystemTable);
 void DumpDmesg(void);
+
 EFI_STATUS ReadMemoryAndWriteToFile(UINTN* MemoryAddress,UINTN Length, CHAR16 *FilePath);
 CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message);
-VOID
-EFIAPI
-FeedWatchdogCallback (IN EFI_EVENT Event,IN VOID      *Context);
 
-#endif
+VOID EFIAPI FeedWatchdogCallback (IN EFI_EVENT Event,IN VOID      *Context);

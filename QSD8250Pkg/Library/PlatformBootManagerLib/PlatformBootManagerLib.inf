@@ -79,6 +79,7 @@
   gUefiShellFileGuid
   gHtcLeoBootSplashAppGuid
   gTetrisAppGuid
+  gFastbootAppGuid
 
 [Protocols]
   gEfiDevicePathProtocolGuid

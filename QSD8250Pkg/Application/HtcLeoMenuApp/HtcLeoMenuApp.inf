@@ -47,4 +47,4 @@
   gEfiSimpleFileSystemProtocolGuid              ## CONSUMES
   gEfiLoadedImageProtocolGuid                   ## CONSUMES
   gEfiGraphicsOutputProtocolGuid                ## CONSUMES
-  gEfiWatchdogTimerArchProtocolGuid             ## CONSUMES
+  gEfiWatchdogTimerArchProtocolGuid

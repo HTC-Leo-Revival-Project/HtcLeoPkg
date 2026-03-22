@@ -15,6 +15,7 @@ FillMenu()
 {
   UINTN Index = 0;
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
+  MenuOptions[Index++] = (MenuEntry){L"Fastboot", TRUE, &StartFastbootApp};
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
@@ -76,7 +77,7 @@ void DrawMenu()
 
   // Print menu title
   gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));
-  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 1 );
+  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN-4, 1 ); // offset by 4 so the next line will center under the name
   
   Print(L" %s \n", (CHAR16 *)PcdGetPtr(PcdFirmwareVendor));
   gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 2 );
@@ -158,8 +159,7 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
           }
           break;
         case CHAR_TAB:
-          //Leo - windows button
-          //Passion - Trackball right
+          // windows button
           break;
         case CHAR_BACKSPACE:
           // back button
@@ -207,6 +207,10 @@ void StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   StartApp(ImageHandle, SystemTable, TETRIS_APP_TITLE);
 }
 
+void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  StartApp(ImageHandle, SystemTable, FASTBOOT_APP_TITLE);
+}
 
 void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -251,7 +255,6 @@ void BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     DEBUG((EFI_D_ERROR, "Booting default entry failed!"));
   }
 }
-
 
 /**
   Periodic timer callback function to feed the watchdog.
