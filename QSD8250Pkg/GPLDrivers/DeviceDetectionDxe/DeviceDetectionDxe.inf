@@ -1,0 +1,35 @@
+[Defines] 
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = DeviceDetectionDxe
+  FILE_GUID                      = D7A59C0A-899E-4E31-B2C3-3D551D7A9999 #7C04A583-9E3E-4f1c-AD65-E05268D0B4D1
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 0.1 
+  ENTRY_POINT                    = DeviceDetectionDxeInit
+
+[Sources]
+  DeviceDetectionDxe.c
+  Atags.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+  ArmPkg/ArmPkg.dec
+  
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiLib
+  IoLib
+  UefiBootServicesTableLib 
+  MemoryAllocationLib 
+  BaseMemoryLib
+
+[Pcd]
+  gArmTokenSpaceGuid.PcdSystemMemoryBase
+
+[Protocols]
+  gHtcDeviceDetectionProtocolGuid     ##Consumes
+
+[depex]
+ TRUE
