@@ -56,5 +56,9 @@
 
 #define DMA_DST_BITS_MASK 0x3F
 
+#define RGB565_BPP 16
+#define RGB888_BPP 24
+#define ARGB8888_BPP 32
+
 VOID PaintScreen( IN UINTN BgColor );
 VOID ReconfigFb( IN UINTN Bpp );
