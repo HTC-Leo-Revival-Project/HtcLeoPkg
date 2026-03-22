@@ -14,9 +14,7 @@ UINTN FbAddr = FixedPcdGet32(PcdMipiFrameBufferAddress);
 UINTN GlobalBpp = 0;
 
 VOID
-PaintScreen(
-  IN  UINTN   BgColor
-)
+PaintScreen(IN  UINTN   BgColor)
 {
     // Code from FramebufferSerialPortLib
 	char* Pixels = (void*)FbAddr;
@@ -41,10 +39,7 @@ PaintScreen(
 	}
 }
 
-VOID
-ReconfigFb(
-    IN UINTN Bpp
-)
+VOID ReconfigFb(IN UINTN Bpp)
 {
   UINT32 dma_cfg = 0;
   GlobalBpp = Bpp;
