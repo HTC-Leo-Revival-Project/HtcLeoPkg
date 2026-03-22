@@ -1,32 +1,6 @@
 #include <Library/Atags.h>
 #include <Device/DeviceType.h>
-
-BOOLEAN DetectCLK(char* cmdline) {
-    if (cmdline == NULL) {
-        return FALSE;
-    }
-
-if (AsciiStrStr(cmdline, "clk=") != NULL &&
-    (AsciiStrStr(cmdline, "androidboot.hardware=leo") != NULL ||
-     AsciiStrStr(cmdline, "androidboot.hardware=schubert") != NULL)) {
-    return TRUE;
-}
-
-    return FALSE;
-}
-
-DeviceType DetectDevice(char *cmdline) {
-    if (strstr(cmdline, "androidboot.hardware=leo"))
-        return LEO;
-    if (strstr(cmdline, "androidboot.hardware=schubert"))
-        return SCHUBERT;
-    if (strstr(cmdline, "board_bravo"))
-        return BRAVO;
-    if (strstr(cmdline, "board_mahimahi"))
-        return PASSION;
-
-    return UNKNOWN;
-}
+#include "Atags.h"
 
 VOID ParseAtags(UINT32 StartAddr, HtcDevice *mDevice) {
     struct tag *t = (struct tag *)(UINTN)StartAddr;
@@ -75,7 +49,7 @@ VOID ParseAtags(UINT32 StartAddr, HtcDevice *mDevice) {
                 char *cmd = t->u.cmdline.cmdline;
                 DEBUG((EFI_D_INFO | EFI_D_LOAD,"[ATAG] Command Line: %a\n", cmd));
                 mDevice->cLK = DetectCLK(cmd);
-                mDevice->type = DetectDevice(cmd);
+                mDevice->type = AtagsDetectDevice(cmd);
                 mDevice->cmdline = cmd;
                 break;
             case ATAG_CLK:
