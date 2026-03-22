@@ -1,7 +1,9 @@
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
- *
+ * Copyright (c) 2011-2012, ARM Limited. All rights reserved.
+ * Copyright (c) 2015, The EFIDroid Project. All rights reserved.
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -27,11 +29,9 @@
  */
 
 #include <Uefi.h>
-//#include <PiDxe.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
-//#include <Library/BootAppLib.h>
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
 #include <Library/ArmLib.h>
@@ -47,6 +47,145 @@
 #include <Library/hsusb.h>
 
 #include "fastboot.h"
+
+STATIC EFI_EVENT mExitBootServicesEvent;
+STATIC EFI_EVENT mUsbOnlineEvent = NULL;
+STATIC EFI_EVENT txn_done = NULL;
+
+static struct udc_endpoint *in, *out;
+static struct udc_endpoint *fastboot_endpoints[2];
+static struct udc_request *req;
+int txn_status;
+
+STATIC VOID *DownloadBase = NULL;
+STATIC UINT32 DownloadSize = 0;
+STATIC UINTN DownloadPages = 0;
+
+static unsigned mFastbootState = STATE_OFFLINE;
+
+struct fastboot_cmd {
+	struct fastboot_cmd *next;
+	const char *prefix;
+	unsigned prefix_len;
+	void (*handle)(const char *arg, void *data, unsigned sz);
+};
+
+struct fastboot_var {
+	struct fastboot_var *next;
+	const char *name;
+	const char *value;
+};
+	
+static struct fastboot_cmd *CommandList;
+static struct fastboot_var *VariableList;
+
+// USB read/write
+static void req_complete(struct udc_request *req, unsigned actual, int status)
+{
+	txn_status = status;
+	req->length = actual;
+
+	gBS->SignalEvent (txn_done);
+}
+
+static int usb_read(void *_buf, unsigned len)
+{
+	int r;
+	unsigned xfer;
+	unsigned char *buf = _buf;
+	int count = 0;
+    UINTN EventIndex;
+
+	if (mFastbootState == STATE_ERROR)
+		goto oops;
+
+	while (len > 0) {
+		xfer = (len > 4096) ? 4096 : len;
+		req->buf = buf;
+		req->length = xfer;
+		req->complete = req_complete;
+		r = udc_request_queue(out, req);
+		if (r < 0) {
+			dprintf(INFO, "usb_read() queue failed\n");
+			goto oops;
+		}
+        gBS->WaitForEvent (1, &txn_done, &EventIndex);
+
+		if (txn_status < 0) {
+			dprintf(INFO, "usb_read() transaction failed\n");
+			goto oops;
+		}
+
+		count += req->length;
+		buf += req->length;
+		len -= req->length;
+
+		/* short transfer? */
+		if (req->length != xfer) break;
+	}
+
+	return count;
+
+oops:
+	mFastbootState = STATE_ERROR;
+	return -1;
+}
+
+static int usb_write(void *buf, unsigned len)
+{
+	int r;
+    UINTN EventIndex;
+
+	if (mFastbootState == STATE_ERROR)
+		goto oops;
+
+	req->buf = buf;
+	req->length = len;
+	req->complete = req_complete;
+	r = udc_request_queue(in, req);
+	if (r < 0) {
+		dprintf(INFO, "usb_write() queue failed\n");
+		goto oops;
+	}
+    gBS->WaitForEvent (1, &txn_done, &EventIndex);
+	if (txn_status < 0) {
+		dprintf(INFO, "usb_write() transaction failed\n");
+		goto oops;
+	}
+	return req->length;
+
+oops:
+	mFastbootState = STATE_ERROR;
+	return -1;
+}
+
+STATIC VOID 
+FastbootNotify(
+	struct udc_gadget *Gadget, 
+	unsigned Event)
+{
+	if (Event == UDC_EVENT_ONLINE) {
+        gBS->SignalEvent (mUsbOnlineEvent);
+	}
+}
+
+static struct udc_device surf_udc_device = {
+	.vendor_id	= 0x18d1,
+	.product_id	= 0x0D02,
+	.version_id	= 0x0001,
+	.manufacturer	= "HTC",
+	.product	= "LEO EDK2",
+};
+
+static struct udc_gadget fastboot_gadget = {
+	.notify		= FastbootNotify,
+	.ifc_class	= 0xff,
+	.ifc_subclass	= 0x42,
+	.ifc_protocol	= 0x03,
+	.ifc_endpoints	= 2,
+	.ifc_string	= "fastboot",
+	.ept		= fastboot_endpoints,
+};
 
 /* todo: give lk strtoul and nuke this */
 static unsigned hex2unsigned(const char *x)
@@ -76,225 +215,136 @@ static unsigned hex2unsigned(const char *x)
     return n;
 }
 
-struct fastboot_cmd {
-	struct fastboot_cmd *next;
-	const char *prefix;
-	unsigned prefix_len;
-	void (*handle)(const char *arg, void *data, unsigned sz);
-};
-
-struct fastboot_var {
-	struct fastboot_var *next;
-	const char *name;
-	const char *value;
-};
-	
-static struct fastboot_cmd *cmdlist;
-
-void fastboot_register(const char *prefix,
-		       void (*handle)(const char *arg, void *data, unsigned sz))
-{
-	struct fastboot_cmd *cmd;
-	cmd = malloc(sizeof(*cmd));
-	if (cmd) {
-		cmd->prefix = prefix;
-		cmd->prefix_len = strlen(prefix);
-		cmd->handle = handle;
-		cmd->next = cmdlist;
-		cmdlist = cmd;
-	}
-}
-
-static struct fastboot_var *varlist;
-
-void fastboot_publish(const char *name, const char *value)
-{
-	struct fastboot_var *var;
-	var = malloc(sizeof(*var));
-	if (var) {
-		var->name = name;
-		var->value = value;
-		var->next = varlist;
-		varlist = var;
-	}
-}
-
-EFI_EVENT usb_online = NULL;
-EFI_EVENT txn_done = NULL;
-
-static unsigned char buffer[4096];
-static struct udc_endpoint *in, *out;
-static struct udc_request *req;
-int txn_status;
-
-static void *download_base;
-static unsigned download_max;
-static unsigned download_size;
-
-#define STATE_OFFLINE	0
-#define STATE_COMMAND	1
-#define STATE_COMPLETE	2
-#define STATE_ERROR	3
-
-static unsigned fastboot_state = STATE_OFFLINE;
-
-static void req_complete(struct udc_request *req, unsigned actual, int status)
-{
-	txn_status = status;
-	req->length = actual;
-
-	gBS->SignalEvent (txn_done);
-}
-
-static int usb_read(void *_buf, unsigned len)
-{
-	int r;
-	unsigned xfer;
-	unsigned char *buf = _buf;
-	int count = 0;
-    UINTN EventIndex;
-
-	if (fastboot_state == STATE_ERROR)
-		goto oops;
-
-	while (len > 0) {
-		xfer = (len > 4096) ? 4096 : len;
-		req->buf = buf;
-		req->length = xfer;
-		req->complete = req_complete;
-		r = udc_request_queue(out, req);
-		if (r < 0) {
-			dprintf(INFO, "usb_read() queue failed\n");
-			goto oops;
-		}
-		//event_wait(&txn_done);
-        gBS->WaitForEvent (1, &txn_done, &EventIndex);
-
-		if (txn_status < 0) {
-			dprintf(INFO, "usb_read() transaction failed\n");
-			goto oops;
-		}
-
-		count += req->length;
-		buf += req->length;
-		len -= req->length;
-
-		/* short transfer? */
-		if (req->length != xfer) break;
-	}
-
-	return count;
-
-oops:
-	fastboot_state = STATE_ERROR;
-	return -1;
-}
-
-static int usb_write(void *buf, unsigned len)
-{
-	int r;
-    UINTN EventIndex;
-
-	if (fastboot_state == STATE_ERROR)
-		goto oops;
-
-	req->buf = buf;
-	req->length = len;
-	req->complete = req_complete;
-	r = udc_request_queue(in, req);
-	if (r < 0) {
-		dprintf(INFO, "usb_write() queue failed\n");
-		goto oops;
-	}
-	//event_wait(&txn_done);
-    gBS->WaitForEvent (1, &txn_done, &EventIndex);
-	if (txn_status < 0) {
-		dprintf(INFO, "usb_write() transaction failed\n");
-		goto oops;
-	}
-	return req->length;
-
-oops:
-	fastboot_state = STATE_ERROR;
-	return -1;
-}
-
-void fastboot_ack(const char *code, const char *reason)
+void 
+FastbootAck(
+	const char *Code, 
+	const char *Reason
+	//BOOLEAN ChangeState
+)
 {
 	STACKBUF_DMA_ALIGN(Response, FASTBOOT_COMMAND_MAX_LENGTH);
 
-	if (fastboot_state != STATE_COMMAND)
+	if (mFastbootState != STATE_COMMAND)
 		return;
 
-	if (reason == 0)
-		reason = "";
+	if (Reason == 0)
+		Reason = "";
 
-	AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", code, reason);
-	fastboot_state = STATE_COMPLETE;
+	AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", Code, Reason);
 
 	if( usb_write(Response, strlen((CHAR8*)Response)) < 0 ) {
-		fastboot_state = STATE_ERROR;
+		mFastbootState = STATE_ERROR;
+	//else if(ChangeState)
 	}else {
-		fastboot_state = STATE_COMPLETE;
+		mFastbootState = STATE_COMPLETE;
 	}
 }
 
-void fastboot_fail(const char *reason)
+void 
+FastbootFail(
+	const char *Reason
+)
 {
-	fastboot_ack("FAIL", reason);
+	FastbootAck("FAIL", Reason);
 }
 
-void fastboot_okay(const char *info)
+void 
+FastbootOkay(
+	const char *Info
+)
 {
-	fastboot_ack("OKAY", info);
+	FastbootAck("OKAY", Info);
 }
 
-int fastboot_write(void *buf, unsigned len)
+void 
+FastbootRegister(
+	const char *Prefix,
+	void (*Handle)(const char *Arg, void *Data, unsigned Size))
 {
-	return usb_write(buf, len);
-}
+	struct fastboot_cmd *Command;
 
-static void cmd_getvar(const char *arg, void *data, unsigned sz)
-{
-	struct fastboot_var *var;
-
-	for (var = varlist; var; var = var->next) {
-		if (!strcmp(var->name, arg)) {
-			fastboot_okay(var->value);
-			return;
-		}
+	Command = AllocatePool(sizeof(*Command));
+	if (Command) {
+		Command->prefix = Prefix;
+		Command->prefix_len = strlen(Prefix);
+		Command->handle = Handle;
+		Command->next = CommandList;
+		CommandList = Command;
 	}
-	fastboot_okay("");
 }
 
-static void cmd_download(const char *arg, void *data, unsigned sz)
+void 
+FastbootPublish(
+	const char *Name, 
+	const char *Value
+)
 {
-	char response[FASTBOOT_COMMAND_MAX_LENGTH];
-	unsigned len = hex2unsigned(arg);
+	struct fastboot_var *Variable;
+
+	Variable = AllocatePool(sizeof(*Variable));
+	if (Variable) {
+		Variable->name = Name;
+		Variable->value = Value;
+		Variable->next = VariableList;
+		VariableList = Variable;
+	}
+}
+
+static void 
+CommandDownload(
+	const char *Arg, 
+	void *Data, 
+	unsigned Size
+)
+{
+	char Response[FASTBOOT_COMMAND_MAX_LENGTH];
+	unsigned Length = hex2unsigned(Arg);
 	int r;
 
-	download_size = 0;
-	if (len > download_max) {
-		fastboot_fail("data too large");
+	// free old data
+  	if(DownloadBase) {
+		FreeAlignedPages(DownloadBase, DownloadPages);
+		DownloadBase = NULL;
+		DownloadSize = 0;
+		DownloadPages = 0;
+  	}
+
+	// allocate data buffer
+	DownloadSize = 0;
+	DownloadPages = ROUNDUP(Length, EFI_PAGE_SIZE)/EFI_PAGE_SIZE;
+	DownloadBase = AllocateAlignedPages(DownloadPages, EFI_PAGE_SIZE);
+	if(DownloadBase == NULL) {
+		FastbootFail("data too large");
 		return;
 	}
 
-	sprintf(response,"DATA%08x", len);
-	if (usb_write(response, strlen(response)) < 0)
-		return;
-
-	r = usb_read(download_base, len);
-	if ((r < 0) || (r != len)) {
-		fastboot_state = STATE_ERROR;
+	// write response
+	AsciiSPrint(Response, FASTBOOT_COMMAND_MAX_LENGTH, "DATA%08x", Length);
+	if(usb_write(Response, AsciiStrLen(Response))<0) {
+		mFastbootState = STATE_ERROR;
 		return;
 	}
-	download_size = len;
-	fastboot_okay("");
+
+	// Discard the cache contents before starting the download
+  	InvalidateDataCacheRange(DownloadBase, Length);
+
+	r = usb_read(DownloadBase, Length);
+	if ((r < 0) || ((UINT32)r != Length)) {
+		mFastbootState = STATE_ERROR;
+		return;
+	}
+
+	// set size and send OKAY
+  	DownloadSize = Length;
+  	FastbootOkay("");
 }
 
-static void fastboot_command_loop(void)
+static void 
+FastbootCommandLoop(
+	void
+)
 {
-	struct fastboot_cmd *cmd;
+	struct fastboot_cmd *Command;
 	int r;
 	dprintf(INFO,"fastboot: processing commands\n");
 
@@ -302,137 +352,116 @@ static void fastboot_command_loop(void)
     ASSERT(Buffer);
 
 again:
-	while (fastboot_state != STATE_ERROR) {
+	while (mFastbootState != STATE_ERROR) {
 		SetMem(Buffer, FASTBOOT_COMMAND_MAX_LENGTH, 0);
 		InvalidateDataCacheRange(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 
 		r = usb_read(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 		if (r < 0)
 			break;
-		Buffer[r] = 0;
-		dprintf(INFO,"fastboot: %s\n", Buffer);
 
-		for (cmd = cmdlist; cmd; cmd = cmd->next) {
-			if (memcmp(Buffer, cmd->prefix, cmd->prefix_len))
+		Buffer[r] = 0;
+
+		mFastbootState = STATE_COMMAND;
+
+		for (Command = CommandList; Command; Command = Command->next) {
+			UINTN CmdLen = AsciiStrLen((CHAR8*)Buffer);
+
+			if (CompareMem(Buffer, Command->prefix, Command->prefix_len))
 				continue;
-			fastboot_state = STATE_COMMAND;
-			cmd->handle((const char*) Buffer + cmd->prefix_len,
-				    (void*) download_base, download_size);
-			if (fastboot_state == STATE_COMMAND)
-				fastboot_fail("unknown reason");
+
+			CHAR8* Arg = (CHAR8*) Buffer + Command->prefix_len;
+			if(Arg[0]==' ')
+				Arg++;
+			
+			Command->handle(Arg, DownloadBase, DownloadSize);
+			if (mFastbootState == STATE_STOP)
+        		goto stop;
+			if (mFastbootState == STATE_COMMAND)
+				FastbootFail("unknown reason");
 			goto again;
 		}
 
-		fastboot_fail("unknown command");
+		FastbootFail("unknown command");
 			
 	}
-	fastboot_state = STATE_OFFLINE;
-	dprintf(INFO,"fastboot: oops!\n");
+
+stop:
+	if (mFastbootState != STATE_STOP && mFastbootState != STATE_STOPPED) {
+		mFastbootState = STATE_OFFLINE;
+		DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
+	}
+	FreeAlignedPages(Buffer, 1);
+
+	if (DownloadBase!=NULL) {
+		FreeAlignedPages(DownloadBase, DownloadPages);
+		DownloadBase = NULL;
+		DownloadSize = 0;
+		DownloadPages = 0;
+	}
 }
 
-static int fastboot_handler(void *arg)
+static void 
+FastbootHandler(
+	void *arg
+)
 {
 	for (;;) {
         UINTN EventIndex;
 
-        gBS->WaitForEvent (1, &usb_online, &EventIndex);
-		fastboot_command_loop();
-	}
-	return 0;
-}
-
-static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
-{
-	if (event == UDC_EVENT_ONLINE) {
-        gBS->SignalEvent (usb_online);
+        gBS->WaitForEvent (1, &mUsbOnlineEvent, &EventIndex);
+		FastbootCommandLoop();
+		if (mFastbootState==STATE_STOP || mFastbootState==STATE_STOPPED)
+      		break;
 	}
 }
 
-static struct udc_endpoint *fastboot_endpoints[2];
-
-static struct udc_gadget fastboot_gadget = {
-	.notify		= fastboot_notify,
-	.ifc_class	= 0xff,
-	.ifc_subclass	= 0x42,
-	.ifc_protocol	= 0x03,
-	.ifc_endpoints	= 2,
-	.ifc_string	= "fastboot",
-	.ept		= fastboot_endpoints,
-};
-
-int fastboot_init(void *base, unsigned size)
-{
-    EFI_STATUS Status = EFI_SUCCESS;
-	dprintf(INFO, "fastboot_init()\n");
-
-	download_base = base;
-	download_max = size;
-
-	//event_init(&usb_online, 0, EVENT_FLAG_AUTOUNSIGNAL);
-    Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &usb_online);
-    ASSERT_EFI_ERROR(Status);
-	//event_init(&txn_done, 0, EVENT_FLAG_AUTOUNSIGNAL);
-    Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
-    ASSERT_EFI_ERROR(Status);
-
-	in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
-	if (!in)
-		goto fail_alloc_in;
-	out = udc_endpoint_alloc(UDC_TYPE_BULK_OUT, 512);
-	if (!out)
-		goto fail_alloc_out;
-
-	fastboot_endpoints[0] = in;
-	fastboot_endpoints[1] = out;
-
-	req = udc_request_alloc();
-	if (!req)
-		goto fail_alloc_req;
-
-	if (udc_register_gadget(&fastboot_gadget))
-		goto fail_udc_register;
-
-	fastboot_register("getvar:", cmd_getvar);
-	fastboot_register("download:", cmd_download);
-	fastboot_publish("version", "0.5");
-
-	udc_start();
-
-    fastboot_handler(NULL); // we don't use threads so just loop
-
-	return 0;
-
-fail_udc_register:
-	udc_request_free(req);
-fail_alloc_req:
-	udc_endpoint_free(out);	
-fail_alloc_out:
-	udc_endpoint_free(in);
-fail_alloc_in:
-	return -1;
+STATIC
+VOID
+EFIAPI
+ExitBootServicesEvent (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{ 
+	udc_stop();
 }
 
-static struct udc_device surf_udc_device = {
-	.vendor_id	= 0x18d1,
-	.product_id	= 0x0D02,
-	.version_id	= 0x0001,
-	.manufacturer	= "HTC",
-	.product	= "LEO EDK2",
-};
+static void 
+CommandGetVar(
+	const char *arg, 
+	void *data, 
+	unsigned sz
+)
+{
+	struct fastboot_var *var;
 
-#define MEMBASE         0x28000000
-#define BASE_ADDR       0x11800000
-#define TAGS_ADDR       (BASE_ADDR+0x00000100)
-#define KERNEL_ADDR     (BASE_ADDR+0x00008000)
-#define RAMDISK_ADDR    (BASE_ADDR+0x00a00000)
-#define SCRATCH_ADDR    (BASE_ADDR+0x01400000)
+	for (var = VariableList; var; var = var->next) {
+		if (!strcmp(var->name, arg)) {
+			FastbootOkay(var->value);
+			return;
+		}
+	}
+	FastbootOkay("");
+}
+
 
 // placeholder
-void cmd_boot(const char *arg, void *data, unsigned sz) {
+void 
+CommandBoot(
+	const char *arg, 
+	void *data, 
+	unsigned sz) 
+{
     DEBUG((EFI_D_ERROR, "BOOT CALLED\n"));
 }
 
-void cmd_reboot(const char *arg, void *data, unsigned sz) {
+void 
+CommandReboot(
+	const char *arg, 
+	void *data, 
+	unsigned sz) 
+{
     ResetCold();
 }
 
@@ -442,20 +471,50 @@ StartFastboot(
 	IN EFI_HANDLE ImageHandle, 
 	IN EFI_SYSTEM_TABLE *SystemTable)
 {
-    fastboot_register("boot", cmd_boot);
-	//fastboot_register("continue", cmd_continue);
-	fastboot_register("reboot", cmd_reboot);
-	//fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
-	fastboot_publish("product", "EDK2 LEO");
-	fastboot_publish("kernel", "lk");
+	INT32 r;
+
+	EFI_STATUS Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
+	ASSERT_EFI_ERROR (Status);
+
+    FastbootRegister("boot", CommandBoot);
+	FastbootRegister("reboot", CommandReboot);
+	FastbootPublish("product", "EDK2 LEO");
+	FastbootPublish("kernel", "lk");
 
 	// Init UDC first
-    DEBUG((EFI_D_ERROR, "udc_init()\n"));
-    udc_init(&surf_udc_device);
+    r = udc_init(&surf_udc_device);
+	ASSERT(r==0);
 
-	//fastboot_init(target_get_scratch_address(), 120 * 1024 * 1024);
-	//fastboot_init((void *)SCRATCH_ADDR, (MEMBASE - SCRATCH_ADDR - 0x00100000));
-	fastboot_init((void *)SCRATCH_ADDR, 0x00040000);
+    Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
+    ASSERT_EFI_ERROR(Status);
+
+	in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
+	ASSERT(in==0);
+	out = udc_endpoint_alloc(UDC_TYPE_BULK_OUT, 512);
+	ASSERT(out==0);
+
+	fastboot_endpoints[0] = in;
+	fastboot_endpoints[1] = out;
+
+	req = udc_request_alloc();
+	ASSERT(req==0);
+
+	r = udc_register_gadget(&fastboot_gadget);
+	ASSERT(r==0);
+
+	FastbootRegister("getvar:", CommandGetVar);
+	FastbootRegister("download:", CommandDownload);
+	FastbootPublish("version", "0.5");
+
+	r = udc_start();
+	ASSERT(r==0);
+
+    FastbootHandler(NULL); // we don't use threads so just loop
+
+	if (mFastbootState!=STATE_STOPPED) {
+    	Status = gBS->CloseEvent(mExitBootServicesEvent);
+    	udc_stop();
+  	}
 
 	return EFI_SUCCESS;
 }

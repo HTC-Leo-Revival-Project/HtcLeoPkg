@@ -31,6 +31,13 @@
 
 #define FASTBOOT_COMMAND_MAX_LENGTH 64
 
+#define STATE_OFFLINE	0
+#define STATE_COMMAND	1
+#define STATE_COMPLETE	2
+#define STATE_ERROR	3
+#define STATE_STOP	4
+#define STATE_STOPPED	5
+
 int fastboot_init(void *xfer_buffer, unsigned max);
 
 /* register a command handler 
