@@ -22,10 +22,8 @@
   BaseMemoryLib
   TimerLib
   IoLib
-  # ResetSystemLib
   MallocLib
   LcmLib
-  LkLib
 
 [Sources.common]
   hsusb.c

@@ -172,7 +172,6 @@
   KeypadDeviceImplLib|QSD8250Pkg/Library/KeypadDeviceImplLib/KeypadDeviceImplLib.inf
   MallocLib|QSD8250Pkg/Library/MallocLib/MallocLib.inf
   LcmLib|QSD8250Pkg/Library/LcmLib/LcmLib.inf
-  LkLib|QSD8250Pkg/Library/LkLib/LkLib.inf
   UsbLib|QSD8250Pkg/Library/UsbLib/UsbLib.inf
 
 [LibraryClasses.common.SEC]

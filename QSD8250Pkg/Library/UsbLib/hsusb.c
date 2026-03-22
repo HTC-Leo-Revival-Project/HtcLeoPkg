@@ -32,18 +32,16 @@
 #include <Chipset/irqs.h>
 #include <Chipset/interrupts.h>
 
-
 #include <Uefi.h>
-//#include <PiDxe.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
-//#include <Library/BootAppLib.h>
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
 #include <Library/ArmLib.h>
+#include <Library/TimerLib.h>
 #include <Library/UefiBootServicesTableLib.h>
-#include <Library/Lk/LKEnvLib.h>
+#include <Library/LKEnvLib.h>
 #include <Library/MallocLib.h>
 #include <Library/LcmLib.h>
 #include <Library/hsusb.h>
@@ -268,6 +266,8 @@ void udc_request_free(struct udc_request *req)
 
 int udc_request_queue(struct udc_endpoint *ept, struct udc_request *_req)
 {
+	EFI_TPL     OriginalTPL;
+
 	struct usb_request *req = (struct usb_request *) _req;
 	struct ept_queue_item *item = req->item;
 	unsigned phys = (unsigned) req->req.buf;
@@ -278,6 +278,8 @@ int udc_request_queue(struct udc_endpoint *ept, struct udc_request *_req)
 	item->page1 = (phys & 0xfffff000) + 0x1000;
 
 	//enter_critical_section();
+	OriginalTPL = gBS->RaiseTPL (TPL_HIGH_LEVEL);
+
 	ept->head->next = (unsigned) item;
 	ept->head->info = 0;
 	ept->req = req;
@@ -290,6 +292,7 @@ int udc_request_queue(struct udc_endpoint *ept, struct udc_request *_req)
 
 	writel(ept->bit, USB_ENDPTPRIME);
 	//exit_critical_section();
+	gBS->RestoreTPL (OriginalTPL);
 	return 0;
 }
 
@@ -532,7 +535,7 @@ int udc_init(struct udc_device *dev)
         /* RESET */
 	writel(0x00080002, USB_USBCMD);
 
-	thread_sleep(20);
+	mdelay(20);
 
 //    board_ulpi_init();
 
@@ -543,7 +546,7 @@ int udc_init(struct udc_device *dev)
 	writel(0x02, USB_USBMODE);
 
 	writel(0xffffffff, USB_ENDPTFLUSH);
-	thread_sleep(20);
+	mdelay(20);
 
 	ep0out = _udc_endpoint_alloc(0, 0, 64);
 	ep0in = _udc_endpoint_alloc(0, 1, 64);
@@ -783,7 +786,7 @@ int udc_stop(void)
 	val &= ~(1<<8);
 	writel(val, 0x009034C0);
 #endif
-	thread_sleep(10);
+	mdelay(10);
 
 	return 0;
 }

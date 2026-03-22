@@ -40,7 +40,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 
-#include <Library/Lk/LKEnvLib.h>
+#include <Library/LKEnvLib.h>
 #include <Library/MallocLib.h>
 #include <Library/LcmLib.h>
 #include <Library/udc.h>
