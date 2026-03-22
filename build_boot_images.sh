@@ -2,7 +2,7 @@
 if [ $1 == 'Leo' ]; then
     cat BootShim/BootShim.bin workspace/Build/HtcLeo/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/Leo/bootpayload.bin
 
-    mkbootimg --kernel ImageResources/Leo/bootpayload.bin --base 0x11800000 --kernel_offset 0x00008000 -o ImageResources/Leo/uefi.img
+    mkbootimg --kernel ImageResources/Leo/bootpayload.bin --base 0x11800000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=leo" -o ImageResources/Leo/uefi.img
 
     # NBH creation
     if [ ! -f ImageResources/Leo/nbgen ]; then
@@ -20,11 +20,11 @@ if [ $1 == 'Leo' ]; then
 elif [ $1 == 'Schubert' ]; then
     cat BootShim/BootShim.bin workspace/Build/Htc$1/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/$1/bootpayload.bin
 
-    ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/$1/bootpayload.bin --base 0x20000000 --kernel_offset 0x00008000 --header_version 0 -o ImageResources/$1/uefi.img
+    ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/$1/bootpayload.bin --base 0x20000000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=schubert" -o ImageResources/$1/uefi.img
 elif [ $1 == 'Passion' ]; then
     cat BootShim/BootShim.bin workspace/Build/Htc$1/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/$1/bootpayload.bin
 
-   ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/$1/bootpayload.bin --ramdisk ImageResources/$1/ramdisk --base 0x20000000 --kernel_offset 0x00008000 --header_version 0 -o ImageResources/$1/uefi.img
+   ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/$1/bootpayload.bin --ramdisk ImageResources/$1/ramdisk --base 0x20000000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=passion" -o ImageResources/$1/uefi.img
 else
     echo "Bootimages: Invalid platform"
 fi
