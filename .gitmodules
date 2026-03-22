@@ -1,0 +1,4 @@
+[submodule "ImageResources/mkbootimg"]
+	path = ImageResources/mkbootimg
+	url = https://github.com/lineageos/android_system_tools_mkbootimg.git
+	branch = lineage-23.0
