@@ -6,10 +6,11 @@ BOOLEAN DetectCLK(char* cmdline) {
         return FALSE;
     }
 
-    if (AsciiStrStr(cmdline, "clk=") != NULL &&
-        AsciiStrStr(cmdline, "androidboot.hardware=leo") != NULL) {
-        return TRUE;
-    }
+if (AsciiStrStr(cmdline, "clk=") != NULL &&
+    (AsciiStrStr(cmdline, "androidboot.hardware=leo") != NULL ||
+     AsciiStrStr(cmdline, "androidboot.hardware=schubert") != NULL)) {
+    return TRUE;
+}
 
     return FALSE;
 }
