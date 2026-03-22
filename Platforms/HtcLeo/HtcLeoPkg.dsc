@@ -47,6 +47,8 @@
 
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferAddress|0x02A00000
 
+  gQSD8250PkgTokenSpaceGuid.PcdMachType|0x9DC
+
   # SMBIOS
   gQSD8250PkgTokenSpaceGuid.PcdSmbiosSystemModel|"HTC HD2"
   gQSD8250PkgTokenSpaceGuid.PcdSmbiosSystemRetailModel|"HTC LEO"
