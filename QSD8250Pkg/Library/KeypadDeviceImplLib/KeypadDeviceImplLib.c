@@ -139,7 +139,7 @@ KeypadDeviceImplConstructor(VOID)
   Device = BRAVO;
 #endif
 #if DEVICETYPE== 4
-  DEVICE = PASSION;
+  Device = PASSION;
 #endif
 #if KP_LED_ENABLE_METHOD == 2
   // Find the MicroP protocol. ASSERT if not found.

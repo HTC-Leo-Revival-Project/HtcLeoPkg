@@ -1,0 +1,42 @@
+[FD.QSD8250_UEFI]
+BaseAddress   = 0x2C000000|gArmTokenSpaceGuid.PcdFdBaseAddress  # The base address of the Firmware in NOR Flash.
+Size          = 0x00100000|gArmTokenSpaceGuid.PcdFdSize         # The size in bytes of the FLASH Device
+ErasePolarity = 1
+
+# This one is tricky, it must be: BlockSize * NumBlocks = Size
+BlockSize     = 0x00001000
+NumBlocks     = 0x100
+
+################################################################################
+#
+# Following are lists of FD Region layout which correspond to the locations of different
+# images within the flash device.
+#
+# Regions must be defined in ascending order and may not overlap.
+#
+# A Layout Region start with a eight digit hex offset (leading "0x" required) followed by
+# the pipe "|" character, followed by the size of the region, also in hex with the leading
+# "0x" characters. Like:
+# Offset|Size
+# PcdOffsetCName|PcdSizeCName
+# RegionType <FV, DATA, or FILE>
+#
+################################################################################
+
+# 512 bytes of configuration header & 8 bytes of image header
+0x00000000|0x00100000
+gArmTokenSpaceGuid.PcdFvBaseAddress|gArmTokenSpaceGuid.PcdFvSize
+FV = FVMAIN_COMPACT
+
+!include QSD8250Pkg/QSD8250Pkg.fdf
+
+  # Charging App
+  #INF QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
+
+  // Mainline device tree blob
+  FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E326 {
+  SECTION RAW = Platforms/HtcLeo/FdtBlob/qcom-qsd8250-htc-leo.dtb
+  }
+
+!include QSD8250Pkg/CommonFv.fdf.inc
+!include QSD8250Pkg/CommonFdf.fdf.inc
