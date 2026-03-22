@@ -48,6 +48,7 @@
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferAddress|0x3b00000
 
   gQSD8250PkgTokenSpaceGuid.PcdSerialRegisterBase|0xA9A00000
+  gQSD8250PkgTokenSpaceGuid.PcdMachType|0x900
 
   # SMBIOS
   gQSD8250PkgTokenSpaceGuid.PcdSmbiosSystemModel|"HTC Nexus One"
