@@ -28,7 +28,7 @@
 .text
 .globl _start
 _start:
-	b	_Reset
+	b	_SaveAtags
 
 //if EDK2 is loaded by wince spl add romhdr
 .org 0x40
@@ -61,6 +61,36 @@ romhdr:
 	.word 0                     // ulTrackingStart
 	.word 0                     // ulTrackingLen
 .org 0x00001000
+
+
+_SaveAtags:
+	ldr     r3, =AtagsSrcPtr
+	str     r2, [r3]
+
+	ldr     r3, =AtagsCopyBuffer
+	mov     r4, r2              // source (ATAGS)
+	mov     r5, r3              // destination
+
+CopyAtagsLoop:
+	ldr     r0, [r4]            // size (in words)
+	ldr     r1, [r4, #4]        // tag
+
+	mov     r6, r0
+	mov     r7, r4
+
+CopyTag:
+	ldr     r8, [r7], #4
+	str     r8, [r5], #4
+	subs    r6, r6, #1
+	bgt     CopyTag
+
+	cmp     r1, #0
+	beq     CopyDone
+
+	add     r4, r4, r0, LSL #2
+	b       CopyAtagsLoop
+
+CopyDone:
 
 _Reset:
 	/* do some cpu setup */
@@ -124,6 +154,11 @@ _CopyLoop:
 	/* we're relocated, jump to the right address */
 
 _Entry:
+
+	ldr     r0, =AtagsCopyPtr
+	ldr     r1, =AtagsCopyBuffer
+	str     r1, [r0]
+
 	ldr		r5, UefiBase
 	bx		r5
 
@@ -138,3 +173,13 @@ UefiSize:
 .text
 .align 4
 _Payload:
+
+.align 4
+AtagsSrcPtr:
+	.word 0
+
+AtagsCopyPtr:
+	.word 0
+
+AtagsCopyBuffer:
+	.space 0x4000
