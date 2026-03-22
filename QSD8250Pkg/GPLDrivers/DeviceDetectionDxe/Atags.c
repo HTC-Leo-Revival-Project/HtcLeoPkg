@@ -20,9 +20,9 @@ DeviceType DetectDevice(char *cmdline) {
         return LEO;
     if (strstr(cmdline, "androidboot.hardware=schubert"))
         return SCHUBERT;
-    if (strstr(cmdline, "androidboot.hardware=bravo"))
+    if (strstr(cmdline, "board_bravo"))
         return BRAVO;
-    if (strstr(cmdline, "androidboot.hardware=passion"))
+    if (strstr(cmdline, "board_mahimahi"))
         return PASSION;
 
     return UNKNOWN;
