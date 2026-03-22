@@ -33,6 +33,13 @@
 [BuildOptions.common]
   GCC:*_*_ARM_CC_FLAGS = -DKP_LED_ENABLE_METHOD=3 -DDEVICETYPE=2 # Gpio
 
+[Components.common]
+  # Charging
+  #QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
+  
+  # DeviceDetection
+  QSD8250Pkg/GPLDrivers/DeviceDetectionDxe/DeviceDetectionDxe.inf
+
 [PcdsFixedAtBuild.common]
   # System Memory (243MB for now)
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x20000000

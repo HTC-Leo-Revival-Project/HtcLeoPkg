@@ -35,6 +35,10 @@ typedef unsigned short u_short;
 typedef UINTN u_int;
 typedef unsigned long u_long;
 
+typedef UINT32 __u32;
+typedef UINT16 __u16;
+typedef UINT8 __u8;
+
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t)&((TYPE *)0)->MEMBER)
 #endif

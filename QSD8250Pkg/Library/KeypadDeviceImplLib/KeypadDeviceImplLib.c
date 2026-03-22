@@ -227,6 +227,9 @@ switch(Device){
   case PASSION:
     //passion has no support for its capative touch buttons yet
     break;
+  case UNKNOWN:
+  default:
+    break;
 }
 if (Device == LEO || Device == BRAVO || Device == PASSION){
           // Common "Enter" Button (trackball/pad on passion/bravo and dial button on leo)

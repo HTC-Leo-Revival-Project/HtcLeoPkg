@@ -32,6 +32,7 @@ FV = FVMAIN_COMPACT
 
   # Charging App
   INF QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
+  INF QSD8250Pkg/GPLDrivers/DeviceDetectionDxe/DeviceDetectionDxe.inf
 
   // Mainline device tree blob
   FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E326 {

@@ -110,7 +110,10 @@ switch(Device){
       }
       break;
     }
-    break;  
+    break;
+    case UNKNOWN:
+    default:
+      break;
   }
 
     // Null-terminate the buffer

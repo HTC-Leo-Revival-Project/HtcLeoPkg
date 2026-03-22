@@ -40,6 +40,9 @@
   # Charging
   QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
 
+  # DeviceDetection
+  QSD8250Pkg/GPLDrivers/DeviceDetectionDxe/DeviceDetectionDxe.inf
+
 [PcdsFixedAtBuild.common]
   # System Memory (576MB)
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x11800000
