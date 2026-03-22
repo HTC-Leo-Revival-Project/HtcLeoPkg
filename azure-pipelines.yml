@@ -104,3 +104,10 @@ steps:
   inputs: 
     pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/Schubert/uefi.img
     artifactName: Htc Schubert UEFI kernel
+
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Htc Passion UEFI kernel'
+  inputs: 
+    pathtoPublish: /home/vsts/work/1/HtcLeoPkg/ImageResources/Passion/uefi.img
+    artifactName: Htc Passion UEFI kernel
