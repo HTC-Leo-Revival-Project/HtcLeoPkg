@@ -202,4 +202,11 @@ typedef UINT8 __u8;
 
 #define __UNUSED //added
 
+#define STACKBUF_DMA_ALIGN(var, size) \
+	UINT8 __##var[(size) + CACHE_LINE]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, CACHE_LINE))
+
+// Timer
+#define mdelay(msecs) MicroSecondDelay((msecs)*1000)
+#define udelay(usecs) MicroSecondDelay((usecs))
+
 #endif

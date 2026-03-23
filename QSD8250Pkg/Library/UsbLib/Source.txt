@@ -1,0 +1,3 @@
+https://github.com/cedesmith/cLK/blob/master/lk/platform/msm_shared/hsusb.c
+
+https://github.com/efidroid/uefi_apps_EFIDroidUi/blob/master/Fastboot.c
