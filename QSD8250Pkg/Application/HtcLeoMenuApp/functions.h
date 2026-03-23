@@ -1,0 +1,9 @@
+VOID StartApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable, CHAR16 *Description);
+VOID StartShell(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+VOID StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+VOID SetClkBoot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+VOID NullFunction();
+VOID ExitMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+VOID BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+VOID RestoreInitialConsoleMode(IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *Cout,IN EFI_SIMPLE_TEXT_OUTPUT_MODE     *StoredMode);
+VOID PrepareConsole(IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *Cout,OUT EFI_SIMPLE_TEXT_OUTPUT_MODE    *ModeToStore);

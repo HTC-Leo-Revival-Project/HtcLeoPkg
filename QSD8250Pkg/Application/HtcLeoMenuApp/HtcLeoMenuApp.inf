@@ -14,6 +14,11 @@
   HexInput.c
   MemoryTools.c
   menu.c
+  functions.c
+  Booter/LinuxShim.S
+  Booter/AndroidSDDir.c
+  Booter/AndroidKernel.c
+
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -34,10 +39,14 @@
   ResetSystemLib
   UefiBootManagerLib
   DevicePathLib
+  FrameBufferConfigLib
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
+  gArmTokenSpaceGuid.PcdSystemMemoryBase
+  gQSD8250PkgTokenSpaceGuid.PcdMachType
+  
 
 [Protocols]
   gEfiGraphicsOutputProtocolGuid                ## CONSUMES
@@ -48,3 +57,4 @@
   gEfiLoadedImageProtocolGuid                   ## CONSUMES
   gEfiGraphicsOutputProtocolGuid                ## CONSUMES
   gEfiWatchdogTimerArchProtocolGuid             ## CONSUMES
+  gHtcDeviceDetectionProtocolGuid               ## CONSUMES

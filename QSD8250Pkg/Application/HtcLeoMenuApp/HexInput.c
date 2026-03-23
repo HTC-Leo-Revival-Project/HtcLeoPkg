@@ -6,7 +6,6 @@
 CHAR16 HexBuffer[HEX_LENGTH + 1] = L"00000000";
 CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message)
 {
-  DeviceType Device;
   CHAR16 HexChars[] = L"0123456789ABCDEF";
   EFI_INPUT_KEY Key;
   UINTN Index = 0;
@@ -15,15 +14,7 @@ CHAR16* GetHexInput(EFI_SYSTEM_TABLE *SystemTable, CHAR16* message)
   BOOLEAN InputComplete = FALSE;
   CHAR16 EmptyHexBuffer[HEX_LENGTH + 1] = L"00000000";
 
-#if DEVICETYPE == 1
-  Device = LEO;
-#elif DEVICETYPE == 2
-  Device = SCHUBERT;
-#elif DEVICETYPE == 3
-  Device = BRAVO;
-#elif DEVICETYPE == 4
-  Device = PASSION;
-#endif
+  DeviceType Device = mDevice->type;
 
   for (int i = 0; i < HEX_LENGTH + 1; i++){
     HexBuffer[i] = EmptyHexBuffer[i];

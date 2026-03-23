@@ -1,62 +1,30 @@
 #include "menu.h"
 #include "BootApp.h"
+#include "functions.h"
 
 MenuEntry MenuOptions[MAX_OPTIONS_COUNT] = {0};
 
 UINTN MenuOptionCount = 0;
 UINTN SelectedIndex = 0;
-EFI_SIMPLE_TEXT_OUTPUT_MODE InitialMode;
+EFI_SIMPLE_TEXT_OUTPUT_MODE *InitialMode;
 EFI_WATCHDOG_TIMER_ARCH_PROTOCOL *WatchdogTimer;
+HTC_DEVICE_DETECTION_PROTOCOL *DeviceDetectionProtocol;
 UINT64 TimerPeriod = 120 * 10 * 1000 * 1000;
 UINT64 FeedInterval = 60 * 1000 * 1000;
+HtcDevice* mDevice;
 
-void
+VOID
 FillMenu()
 {
   UINTN Index = 0;
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
+  MenuOptions[Index++] = (MenuEntry){L"Boot Android", FALSE, &BootAndroidKernel}; //WIP AND NOT READY YET FOR PUBLIC
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
   MenuOptions[Index++] = (MenuEntry){L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
   MenuOptions[Index++] = (MenuEntry){L"Reboot Menu", TRUE, &RebootMenu};
   MenuOptions[Index++] = (MenuEntry){L"Exit", TRUE, &ExitMenu};
-}
-
-void PrepareConsole(
-    IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *Cout,
-    OUT EFI_SIMPLE_TEXT_OUTPUT_MODE    *ModeToStore)
-{
-  EFI_STATUS Status;
-  CopyMem(ModeToStore, Cout->Mode, sizeof(EFI_SIMPLE_TEXT_OUTPUT_MODE));
-
-  Status = Cout->EnableCursor(Cout, FALSE);
-  if (Status != EFI_UNSUPPORTED) { // workaround
-    ASSERT_EFI_ERROR(Status);
-  }
-
-  Status = Cout->ClearScreen(Cout);
-  ASSERT_EFI_ERROR(Status);
-  Status = Cout->SetAttribute(Cout, EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));
-  ASSERT_EFI_ERROR(Status);
-  Status = Cout->SetCursorPosition(Cout, 0, 0);
-  ASSERT_EFI_ERROR(Status);
-}
-
-void RestoreInitialConsoleMode(
-    IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *Cout,
-    IN EFI_SIMPLE_TEXT_OUTPUT_MODE     *StoredMode)
-{
-  EFI_STATUS Status;
-
-  Status = Cout->EnableCursor(Cout, StoredMode->CursorVisible);
-  ASSERT_EFI_ERROR(Status);
-  Status = Cout->SetCursorPosition(Cout, StoredMode->CursorColumn, StoredMode->CursorRow);
-  ASSERT_EFI_ERROR(Status);
-  Status = Cout->SetAttribute(Cout, StoredMode->Attribute);
-  ASSERT_EFI_ERROR(Status);
-  Status = Cout->ClearScreen(Cout);
-  ASSERT_EFI_ERROR(Status);
 }
 
 UINTN GetActiveMenuEntryLength()
@@ -70,18 +38,20 @@ UINTN GetActiveMenuEntryLength()
   return MenuCount;
 }
 
-void DrawMenu()
+VOID DrawMenu()
 {
   MenuOptionCount = GetActiveMenuEntryLength();
+  UINTN visibleIndex = 0;
 
   // Print menu title
   gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));
-  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 1 );
-  
+  gST->ConOut->SetCursorPosition(gST->ConOut, PRINT_CENTRE_COLUMN, 1);
   Print(L" %s \n", (CHAR16 *)PcdGetPtr(PcdFirmwareVendor));
-  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 2 );
+
+  gST->ConOut->SetCursorPosition(gST->ConOut, PRINT_CENTRE_COLUMN, 2);
   Print(L" EDK2 Main Menu \n");
-  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 3 );
+
+  gST->ConOut->SetCursorPosition(gST->ConOut, PRINT_CENTRE_COLUMN, 3);
   Print(L" Version: %s \n", (CHAR16 *)PcdGetPtr(PcdFirmwareVersionString));
 
   // Print menu options
@@ -89,22 +59,22 @@ void DrawMenu()
 
   for (UINTN i = 0; i < sizeof(MenuOptions) / sizeof(MenuOptions[0]); i++) {
     if (!MenuOptions[i].IsActive) {
-      break;
+      continue;
     }
-    gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN, 5+i );
-    if (i == SelectedIndex) {
+    gST->ConOut->SetCursorPosition(gST->ConOut,PRINT_CENTRE_COLUMN,5 + visibleIndex);
+    if (visibleIndex == SelectedIndex) {
       gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_YELLOW, EFI_BLACK));
-    }
-    else {
+    } else {
       gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_WHITE, EFI_BLACK));
     }
 
-    Print(L"%d. %s ", i+1, MenuOptions[i].Name);
+    Print(L"%d. %s ", visibleIndex + 1, MenuOptions[i].Name);
+
+    visibleIndex++;
   }
 }
 
-void MainMenu(
-    IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+VOID MainMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   SelectedIndex     = 0;
   EFI_STATUS Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
@@ -113,10 +83,28 @@ void MainMenu(
   FillMenu();
 }
 
-void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+UINTN GetRealIndexFromVisibleIndex(UINTN visibleIndex)
+{
+  UINTN count = 0;
+
+  for (UINTN i = 0; i < MAX_OPTIONS_COUNT; i++) {
+    if (!MenuOptions[i].IsActive)
+      continue;
+
+    if (count == visibleIndex)
+      return i;
+
+    count++;
+  }
+
+  return -1;
+}
+
+VOID HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   EFI_INPUT_KEY key;
   EFI_STATUS    Status;
+  UINTN realIndex;
 
   Status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
 
@@ -153,13 +141,15 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
         switch (key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
           // dial button
-          if (MenuOptions[SelectedIndex].Function != NULL) {
-            MenuOptions[SelectedIndex].Function(ImageHandle, SystemTable);
-          }
+          realIndex = GetRealIndexFromVisibleIndex(SelectedIndex);
+          if (realIndex >= 0 && MenuOptions[realIndex].Function != NULL) {
+          MenuOptions[realIndex].Function(ImageHandle, SystemTable);
+         }
           break;
         case CHAR_TAB:
           //Leo - windows button
           //Passion - Trackball right
+          DEBUG((EFI_D_ERROR, "SelectedIndex is %d \n", SelectedIndex));
           break;
         case CHAR_BACKSPACE:
           // back button
@@ -172,43 +162,10 @@ void HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }
 }
 
-// Start another app
-void StartApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable, CHAR16 *Description)
-{
-  EFI_BOOT_MANAGER_LOAD_OPTION *BootOptions;
-  UINTN                         BootOptionCount;
-  EFI_STATUS                    Status;
-  
-  EfiBootManagerRefreshAllBootOption();
-
-  BootOptions =
-      EfiBootManagerGetLoadOptions(&BootOptionCount, LoadOptionTypeBoot);
-  ASSERT(BootOptionCount != -1);
-  for (UINTN i = 0; i < BootOptionCount; i++) {
-    if (StrCmp(Description, BootOptions[i].Description) == 0) {
-      RestoreInitialConsoleMode(SystemTable->ConOut, &InitialMode);
-      EfiBootManagerBoot(&BootOptions[i]);
-    }
-  }
-
-  EfiBootManagerFreeLoadOptions(BootOptions, BootOptionCount);
-}
-
-void StartShell(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
-{
-  EFI_STATUS Status = EFI_SUCCESS;
-
-  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
-  StartApp(ImageHandle, SystemTable, SHELL_APP_TITLE);
-}
-
-void StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
-{
-  StartApp(ImageHandle, SystemTable, TETRIS_APP_TITLE);
-}
 
 
-void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+
+VOID RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   SelectedIndex     = 0;
   UINT8 Index = 0;
@@ -216,7 +173,7 @@ void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   
   Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
   ASSERT_EFI_ERROR(Status);
-  MenuOptions[Index++] = (MenuEntry){L"Reboot to CLK", TRUE, &NullFunction};
+  MenuOptions[Index++] = (MenuEntry){L"Reboot to CLK", mDevice->cLK, &SetClkBoot};
   MenuOptions[Index++] = (MenuEntry){L"Reboot", TRUE, &ResetCold};
   MenuOptions[Index++] = (MenuEntry){L"Shutdown", TRUE, &ResetShutdown};
   // Fill disabled options
@@ -224,34 +181,6 @@ void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     MenuOptions[Index++] = (MenuEntry){L"", FALSE, &NullFunction};
   }while(Index < MAX_OPTIONS_COUNT);
 }
-
-void NullFunction()
-{
-  //Print(L"Feature not supported yet!");
-  DEBUG((EFI_D_ERROR, "Feature not supported yet!"));
-}
-
-void ExitMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
-{
-  EFI_STATUS Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
-  ASSERT_EFI_ERROR(Status);
-  SystemTable->BootServices->Exit(ImageHandle, EFI_SUCCESS, 0, NULL);
-}
-
-void BootDefault(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
-{
-  EFI_STATUS Status = EFI_SUCCESS;
-
-  Status = DiscoverAndBootApp(
-      ImageHandle, EFI_REMOVABLE_MEDIA_FILE_NAME_ARM, NULL);
-
-  // We shouldn't reach here if the default file is present
-  if(Status) {
-    //Print(L"Booting default entry failed!");
-    DEBUG((EFI_D_ERROR, "Booting default entry failed!"));
-  }
-}
-
 
 /**
   Periodic timer callback function to feed the watchdog.
@@ -282,9 +211,17 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   UINT32 Timeout = 400; //TODO: Get from pcd
   EFI_EVENT TimerEvent;
 
+    Status = gBS->LocateProtocol(&gHtcDeviceDetectionProtocolGuid, NULL, (VOID **)&DeviceDetectionProtocol);
+    if (EFI_ERROR(Status)) {
+        DEBUG((EFI_D_ERROR, "Failed to locate the Device Detection protocol: %r\n", Status));
+        return Status;
+    }
+
+    *mDevice = DeviceDetectionProtocol->GetInfo();
+
     Status = gBS->LocateProtocol(&gEfiWatchdogTimerArchProtocolGuid, NULL, (VOID **)&WatchdogTimer);
     if (EFI_ERROR(Status)) {
-        DEBUG((EFI_D_ERROR, "Failed to locate Watchdog Timer protocol: %r\n", Status));
+        DEBUG((EFI_D_ERROR, "Failed to locate the Watchdog Timer protocol: %r\n", Status));
         return Status;
     }
 
@@ -350,7 +287,7 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
     // TODO: Use events?
     MicroSecondDelay(10000);
     Timeout--;
-  } while (Timeout > 0);
+  } while (Timeout > 1);
 
 boot_esp:
   BootDefault(ImageHandle, SystemTable);
@@ -362,7 +299,7 @@ menu:
   // Fill main menu
   FillMenu();
 
-  PrepareConsole(SystemTable->ConOut, &InitialMode);
+  PrepareConsole(SystemTable->ConOut, InitialMode);
 
   // Loop for key input
   while (TRUE) {
@@ -371,7 +308,7 @@ menu:
   }
 
   // Restore initial console mode
-  RestoreInitialConsoleMode(SystemTable->ConOut, &InitialMode);
+  RestoreInitialConsoleMode(SystemTable->ConOut, InitialMode);
 
   return EFI_SUCCESS;
 }
