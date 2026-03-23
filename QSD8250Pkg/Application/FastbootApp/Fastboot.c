@@ -446,7 +446,106 @@ CommandGetVar(
 }
 
 
-// placeholder
+STATIC
+VOID
+CommandFlashEsp(
+    const char *Arg,
+    void *Data,
+    unsigned Size
+)
+{
+    EFI_STATUS Status;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs;
+    EFI_FILE_PROTOCOL *Root;
+    EFI_FILE_PROTOCOL *File;
+    EFI_HANDLE *HandleBuffer;
+    UINTN HandleCount;
+    CHAR16 FileName[256];
+	CHAR16 FullPath[300];
+
+	if (Arg == NULL || Arg[0] == '\0') {
+    FastbootFail("no filename");
+    return;
+	}
+
+    if (DownloadBase == NULL || DownloadSize == 0) {
+        FastbootFail("no image");
+        return;
+    }
+
+	AsciiStrToUnicodeStrS(Arg,FileName,sizeof(FileName) / sizeof(CHAR16));
+
+	UnicodeSPrint(FullPath, sizeof(FullPath), L"\\%s", FileName);
+
+    Status = gBS->LocateHandleBuffer(
+        ByProtocol,
+        &gEfiSimpleFileSystemProtocolGuid,
+        NULL,
+        &HandleCount,
+        &HandleBuffer
+    );
+
+    if (EFI_ERROR(Status) || HandleCount == 0) {
+        FastbootFail("no fs");
+        return;
+    }
+
+    Status = gBS->HandleProtocol(
+        HandleBuffer[0],
+        &gEfiSimpleFileSystemProtocolGuid,
+        (VOID**)&Fs
+    );
+
+    if (EFI_ERROR(Status)) {
+        FastbootFail("fs error");
+        return;
+    }
+
+    Status = Fs->OpenVolume(Fs, &Root);
+    if (EFI_ERROR(Status)) {
+        FastbootFail("openvol fail");
+        return;
+    }
+
+    Status = Root->Open(
+        Root,
+        &File,
+        FullPath,
+        EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE,
+        0
+    );
+
+    if (!EFI_ERROR(Status)) {
+        File->Delete(File);
+    }
+
+    Status = Root->Open(
+        Root,
+        &File,
+        FullPath,
+        EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE,
+        0
+    );
+
+    if (EFI_ERROR(Status)) {
+        FastbootFail("create fail");
+        return;
+    }
+
+    UINTN WriteSize = DownloadSize;
+
+    Status = File->Write(File, &WriteSize, DownloadBase);
+    if (EFI_ERROR(Status) || WriteSize != DownloadSize) {
+        File->Close(File);
+        FastbootFail("write fail");
+        return;
+    }
+
+    File->Close(File);
+
+    FastbootOkay("");
+}
+
 void 
 CommandBoot(
 	const char *arg, 
@@ -504,6 +603,7 @@ StartFastboot(
 
 	FastbootRegister("getvar:", CommandGetVar);
 	FastbootRegister("download:", CommandDownload);
+	FastbootRegister("flash:esp:", CommandFlashEsp);
 	FastbootPublish("version", "0.5");
 
 	r = udc_start();
