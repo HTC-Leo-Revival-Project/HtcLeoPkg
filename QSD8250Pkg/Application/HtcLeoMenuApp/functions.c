@@ -52,6 +52,11 @@ VOID StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   StartApp(ImageHandle, SystemTable, TETRIS_APP_TITLE);
 }
 
+void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  StartApp(ImageHandle, SystemTable, FASTBOOT_APP_TITLE);
+}
+
 VOID SetClkBoot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
   MmioWrite32(0x2FFB0000, FASTBOOT_MODE_MAGIC);
   MmioWrite32(0x2FFB0004, FASTBOOT_MODE_MAGIC^CLK_SIGNATURE_MAGIC);
