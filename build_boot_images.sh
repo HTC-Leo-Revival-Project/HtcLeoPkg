@@ -2,7 +2,7 @@
 if [ $1 == 'Leo' ]; then
     cat BootShim/BootShim.bin workspace/Build/HtcLeo/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/Leo/bootpayload.bin
 
-    mkbootimg --kernel ImageResources/Leo/bootpayload.bin --base 0x11800000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=leo" -o ImageResources/Leo/uefi.img
+    ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/Leo/bootpayload.bin --base 0x11800000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=leo" -o ImageResources/Leo/uefi.img
 
     # NBH creation
     if [ ! -f ImageResources/Leo/nbgen ]; then
