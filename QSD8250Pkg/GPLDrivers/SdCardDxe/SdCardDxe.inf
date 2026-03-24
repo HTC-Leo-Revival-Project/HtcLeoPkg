@@ -46,13 +46,14 @@
   QSD8250Pkg/QSD8250Pkg.dec
 
 [LibraryClasses]
+  ArmLib
+  CacheMaintenanceLib
   PcdLib
   UefiLib
   UefiDriverEntryPoint
   MemoryAllocationLib
   BaseMemoryLib
   IoLib
-  ArmLib
   BaseLib
   DebugLib
   UefiBootServicesTableLib

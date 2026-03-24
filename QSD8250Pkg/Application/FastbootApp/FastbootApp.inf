@@ -21,6 +21,7 @@
   
 [LibraryClasses]
   ArmLib
+  CacheMaintenanceLib
   UefiApplicationEntryPoint
   UefiLib
   UefiBootServicesTableLib 

@@ -28,6 +28,8 @@
  * SUCH DAMAGE.
  */
 
+#include <Library/ArmLib.h>
+#include <Library/CacheMaintenanceLib.h>
 #include <Uefi.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
