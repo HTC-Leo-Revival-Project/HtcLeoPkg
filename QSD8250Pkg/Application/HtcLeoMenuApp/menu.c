@@ -164,13 +164,6 @@ VOID HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }
 }
 
-
-void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
-{
-  StartApp(ImageHandle, SystemTable, FASTBOOT_APP_TITLE);
-}
-
-
 VOID RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   SelectedIndex     = 0;
