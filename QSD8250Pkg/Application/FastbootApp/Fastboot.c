@@ -46,7 +46,17 @@
 #include <Library/udc.h>
 #include <Library/hsusb.h>
 
+#include <Chipset/KernelOffsets.h>
+
+#include "Bootimg.h"
 #include "fastboot.h"
+
+#define BASE_ADDR FixedPcdGet32(PcdSystemMemoryBase)
+
+VOID *KernelLoadAddress = (VOID *)(BASE_ADDR + KERNEL_OFFSET);
+VOID *RamdiskLoadAddress = (VOID *)(BASE_ADDR + RAMDISK_OFFSET);
+UINTN *AtagsAddress = (unsigned *)(BASE_ADDR + TAGS_OFFSET);
+UINTN MachType = FixedPcdGet32(PcdMachType);
 
 STATIC EFI_EVENT mExitBootServicesEvent;
 STATIC EFI_EVENT mUsbOnlineEvent = NULL;
@@ -546,13 +556,47 @@ CommandFlashEsp(
     FastbootOkay("");
 }
 
-void 
+VOID 
 CommandBoot(
-	const char *arg, 
-	void *data, 
-	unsigned sz) 
+    const char *arg, 
+    void *data, 
+    unsigned sz) 
 {
-    DEBUG((EFI_D_ERROR, "BOOT CALLED\n"));
+    DEBUG((EFI_D_ERROR, "BOOT CALLED, size=%u\n", sz));
+
+    CopyMem(KernelLoadAddress, data, sz);
+    UINT8 *buf = (UINT8 *)KernelLoadAddress;
+
+    // Check magic
+    if (CompareMem(buf, BOOT_MAGIC, BOOT_MAGIC_SIZE) != 0) {
+        DEBUG((EFI_D_ERROR, "Not an Android boot image!\n"));
+        return;
+    }
+
+    ANDROID_BOOT_IMG_HDR *hdr = (ANDROID_BOOT_IMG_HDR *)buf;
+
+    DEBUG((EFI_D_ERROR, "Boot Image Header:\n"));
+    DEBUG((EFI_D_ERROR, "Kernel size: %u\n", hdr->kernel_size));
+    DEBUG((EFI_D_ERROR, "Ramdisk size: %u\n", hdr->ramdisk_size));
+    DEBUG((EFI_D_ERROR, "Kernel addr: 0x%x\n", hdr->kernel_addr));
+    DEBUG((EFI_D_ERROR, "Ramdisk addr: 0x%x\n", hdr->ramdisk_addr));
+    DEBUG((EFI_D_ERROR, "Tags addr: 0x%x\n", hdr->tags_addr));
+    DEBUG((EFI_D_ERROR, "Page size: %u\n", hdr->page_size));
+    DEBUG((EFI_D_ERROR, "Cmdline: %a\n", hdr->cmdline));
+
+    UINTN page_size = hdr->page_size;
+    UINTN kernel_offset = page_size;
+    UINTN ramdisk_offset = kernel_offset + ((hdr->kernel_size + page_size - 1) & ~(page_size - 1));
+
+    UINT8 *kernel_ptr = buf + kernel_offset;
+    UINT8 *ramdisk_ptr = buf + ramdisk_offset;
+
+    // Dump first 25 bytes of kernel
+    DEBUG((EFI_D_ERROR, "First 25 bytes of kernel:\n"));
+    for (UINTN i = 0; i < 25 && i < hdr->kernel_size; i++) {
+        DEBUG((EFI_D_ERROR, "%02x ", kernel_ptr[i]));
+    }
+    DEBUG((EFI_D_ERROR, "\n"));
 }
 
 void 

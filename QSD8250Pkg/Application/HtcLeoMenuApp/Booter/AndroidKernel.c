@@ -5,6 +5,7 @@
 #include "AndroidSDDir.h"
 #include "LinuxHeader.h"
 #include <Library/Atags.h>
+#include <Chipset/KernelOffsets.h>
 
 #define BASE_ADDR FixedPcdGet32(PcdSystemMemoryBase)
 

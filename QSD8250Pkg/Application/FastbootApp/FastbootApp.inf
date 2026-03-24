@@ -36,4 +36,6 @@
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
+  gArmTokenSpaceGuid.PcdSystemMemoryBase
+  gQSD8250PkgTokenSpaceGuid.PcdMachType
 
