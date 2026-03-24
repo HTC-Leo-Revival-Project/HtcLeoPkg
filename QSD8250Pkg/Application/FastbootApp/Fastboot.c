@@ -564,6 +564,25 @@ CommandReboot(
     ResetCold();
 }
 
+VOID CommandOEMHandler(const CHAR8 *arg, VOID* data, UINTN size){
+    if (arg == NULL || arg[0] == '\0') {
+        FastbootFail("no oem command");
+        return;
+    }
+
+    // --- exit ---
+    if (!AsciiStrCmp(arg, "exit")) {
+        FastbootOkay("bye");
+
+        mFastbootState = STATE_STOP;
+		udc_stop();
+    	gBS->Exit(gImageHandle, EFI_SUCCESS, 0, NULL);
+    }
+
+    // --- unknown ---
+    FastbootFail("unknown oem cmd");
+}
+
 EFI_STATUS 
 EFIAPI
 StartFastboot(
@@ -604,6 +623,7 @@ StartFastboot(
 	FastbootRegister("getvar:", CommandGetVar);
 	FastbootRegister("download:", CommandDownload);
 	FastbootRegister("flash:esp:", CommandFlashEsp);
+	FastbootRegister("oem", CommandOEMHandler);
 	FastbootPublish("version", "0.5");
 
 	r = udc_start();
