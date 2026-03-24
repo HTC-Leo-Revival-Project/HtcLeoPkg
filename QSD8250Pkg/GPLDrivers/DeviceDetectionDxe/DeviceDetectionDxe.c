@@ -30,6 +30,10 @@
 
 #include "Atags.h"
 #include "Spl.h"
+#include "SerialGenerator.h"
+
+#define IMEI_ADDR 0x1EF260
+#define CID_ADDR 0x1EF270
 
 UINT32 mSystemMemoryBase = FixedPcdGet32 (PcdSystemMemoryBase);
 HtcDevice mDevice;
@@ -73,6 +77,38 @@ VOID SPLDetectDevice(VOID) {
 
 }
 
+VOID UpdateCID(VOID) {
+    CHAR8* CidString = GetStringFromMemory((UINT8*)CID_ADDR, 24, 0x8);
+
+    DEBUG((EFI_D_INFO | EFI_D_LOAD, "CID string: %a\n", CidString));
+
+    if (CidString != NULL) {
+        if (mDevice.Cid != NULL) {
+            FreePool(mDevice.Cid);
+        }
+
+        mDevice.Cid = AllocateCopyPool(AsciiStrSize(CidString), CidString);
+        FreePool(CidString);
+    } else {
+        DEBUG((EFI_D_ERROR, "Failed to read CID from memory\n"));
+        mDevice.Cid = NULL;
+    }
+}
+
+VOID UpdateIMEI(VOID) {
+  CHAR8* ImeiString = GetStringFromMemory((UINT8*)IMEI_ADDR, 64, (UINTN)0xF);
+
+  DEBUG((EFI_D_INFO | EFI_D_LOAD, "IMEI string: %a\n", ImeiString));
+
+  if (ImeiString != NULL) {
+    mDevice.Imei = AllocateCopyPool(AsciiStrSize(ImeiString), ImeiString);
+    FreePool(ImeiString);
+  } else {
+    DEBUG((EFI_D_ERROR, "Failed to read IMEI from memory\n"));
+    mDevice.Imei = NULL;
+  }
+}
+
 DeviceType AtagsDetectDevice(CHAR8 *cmdline) {
     if (strstr(cmdline, "androidboot.hardware=leo"))
         return LEO;
@@ -110,6 +146,11 @@ DeviceDetectionDxeInit(
     DEBUG((EFI_D_INFO | EFI_D_LOAD,"Could not find ATAGS falling back to smem\n"));
     SPLDetectDevice();
   }
+  UpdateIMEI();
+  UpdateCID();
+  if (mDevice.Imei != NULL && mDevice.Cid != NULL)
+      mDevice.SerialNumber = GenerateAndroidSerial(mDevice.Cid, mDevice.Imei);
+  DEBUG((EFI_D_INFO | EFI_D_LOAD, "Generated Serial is: %a", mDevice.SerialNumber));
   Status = gBS->InstallMultipleProtocolInterfaces(&Handle, &gHtcDeviceDetectionProtocolGuid, &gHtcDeviceDetectionProtocol, NULL);
 	ASSERT_EFI_ERROR(Status);
 
