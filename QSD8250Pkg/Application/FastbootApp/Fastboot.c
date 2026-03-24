@@ -197,34 +197,28 @@ STATIC struct udc_gadget fastboot_gadget = {
 	.ept		= fastboot_endpoints,
 };
 
-/* todo: give lk strtoul and nuke this */
 STATIC UINTN hex2unsigned(const CHAR8 *x)
 {
     UINTN n = 0;
 
-    while(*x) {
-        switch(*x) {
-        case '0': case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            n = (n << 4) | (*x - '0');
-            break;
-        case 'a': case 'b': case 'c':
-        case 'd': case 'e': case 'f':
-            n = (n << 4) | (*x - 'a' + 10);
-            break;
-        case 'A': case 'B': case 'C':
-        case 'D': case 'E': case 'F':
-            n = (n << 4) | (*x - 'A' + 10);
-            break;
-        default:
-            return n;
+    for (; *x; x++) {
+        n <<= 4;
+
+        if (*x >= '0' && *x <= '9') {
+            n |= (*x - '0');
+        } else if (*x >= 'a' && *x <= 'f') {
+            n |= (*x - 'a' + 10);
+        } else if (*x >= 'A' && *x <= 'F') {
+            n |= (*x - 'A' + 10);
+        } else {
+            n >>= 4;
+		return n;
         }
-        x++;
+
     }
 
     return n;
 }
-
 VOID 
 FastbootAck(
 	const CHAR8 *Code, 
