@@ -55,42 +55,42 @@
 
 VOID *KernelLoadAddress = (VOID *)(BASE_ADDR + KERNEL_OFFSET);
 VOID *RamdiskLoadAddress = (VOID *)(BASE_ADDR + RAMDISK_OFFSET);
-UINTN *AtagsAddress = (unsigned *)(BASE_ADDR + TAGS_OFFSET);
+UINTN *AtagsAddress = (UINTN *)(BASE_ADDR + TAGS_OFFSET);
 UINTN MachType = FixedPcdGet32(PcdMachType);
 
 STATIC EFI_EVENT mExitBootServicesEvent;
 STATIC EFI_EVENT mUsbOnlineEvent = NULL;
 STATIC EFI_EVENT txn_done = NULL;
 
-static struct udc_endpoint *in, *out;
-static struct udc_endpoint *fastboot_endpoints[2];
-static struct udc_request *req;
-int txn_status;
+STATIC struct udc_endpoint *in, *out;
+STATIC struct udc_endpoint *fastboot_endpoints[2];
+STATIC struct udc_request *req;
+UINTN txn_status;
 
 STATIC VOID *DownloadBase = NULL;
 STATIC UINT32 DownloadSize = 0;
 STATIC UINTN DownloadPages = 0;
 
-static unsigned mFastbootState = STATE_OFFLINE;
+STATIC UINTN mFastbootState = STATE_OFFLINE;
 
 struct fastboot_cmd {
 	struct fastboot_cmd *next;
-	const char *prefix;
-	unsigned prefix_len;
-	void (*handle)(const char *arg, void *data, unsigned sz);
+	const CHAR8 *prefix;
+	UINTN prefix_len;
+	VOID (*handle)(const CHAR8 *arg, VOID *data, UINTN sz);
 };
 
 struct fastboot_var {
 	struct fastboot_var *next;
-	const char *name;
-	const char *value;
+	const CHAR8 *name;
+	const CHAR8 *value;
 };
 	
-static struct fastboot_cmd *CommandList;
-static struct fastboot_var *VariableList;
+STATIC struct fastboot_cmd *CommandList;
+STATIC struct fastboot_var *VariableList;
 
 // USB read/write
-static void req_complete(struct udc_request *req, unsigned actual, int status)
+STATIC VOID req_complete(struct udc_request *req, UINTN actual, UINTN status)
 {
 	txn_status = status;
 	req->length = actual;
@@ -98,12 +98,12 @@ static void req_complete(struct udc_request *req, unsigned actual, int status)
 	gBS->SignalEvent (txn_done);
 }
 
-static int usb_read(void *_buf, unsigned len)
+STATIC UINTN usb_read(VOID *_buf, UINTN len)
 {
-	int r;
-	unsigned xfer;
-	unsigned char *buf = _buf;
-	int count = 0;
+	UINTN r;
+	UINTN xfer;
+	CHAR8 *buf = _buf;
+	UINTN count = 0;
     UINTN EventIndex;
 
 	if (mFastbootState == STATE_ERROR)
@@ -116,13 +116,13 @@ static int usb_read(void *_buf, unsigned len)
 		req->complete = req_complete;
 		r = udc_request_queue(out, req);
 		if (r < 0) {
-			dprintf(INFO, "usb_read() queue failed\n");
+			DEBUG((EFI_D_ERROR, "usb_read() queue failed\n"));
 			goto oops;
 		}
         gBS->WaitForEvent (1, &txn_done, &EventIndex);
 
 		if (txn_status < 0) {
-			dprintf(INFO, "usb_read() transaction failed\n");
+			DEBUG((EFI_D_ERROR, "usb_read() transaction failed\n"));
 			goto oops;
 		}
 
@@ -141,9 +141,9 @@ oops:
 	return -1;
 }
 
-static int usb_write(void *buf, unsigned len)
+STATIC UINTN usb_write(VOID *buf, UINTN len)
 {
-	int r;
+	UINTN r;
     UINTN EventIndex;
 
 	if (mFastbootState == STATE_ERROR)
@@ -154,12 +154,12 @@ static int usb_write(void *buf, unsigned len)
 	req->complete = req_complete;
 	r = udc_request_queue(in, req);
 	if (r < 0) {
-		dprintf(INFO, "usb_write() queue failed\n");
+		DEBUG((EFI_D_ERROR, "usb_write() queue failed\n"));
 		goto oops;
 	}
     gBS->WaitForEvent (1, &txn_done, &EventIndex);
 	if (txn_status < 0) {
-		dprintf(INFO, "usb_write() transaction failed\n");
+		DEBUG((EFI_D_ERROR, "usb_write() transaction failed\n"));
 		goto oops;
 	}
 	return req->length;
@@ -172,14 +172,14 @@ oops:
 STATIC VOID 
 FastbootNotify(
 	struct udc_gadget *Gadget, 
-	unsigned Event)
+	UINTN Event)
 {
 	if (Event == UDC_EVENT_ONLINE) {
         gBS->SignalEvent (mUsbOnlineEvent);
 	}
 }
 
-static struct udc_device surf_udc_device = {
+STATIC struct udc_device surf_udc_device = {
 	.vendor_id	= 0x18d1,
 	.product_id	= 0x0D02,
 	.version_id	= 0x0001,
@@ -187,7 +187,7 @@ static struct udc_device surf_udc_device = {
 	.product	= "LEO EDK2",
 };
 
-static struct udc_gadget fastboot_gadget = {
+STATIC struct udc_gadget fastboot_gadget = {
 	.notify		= FastbootNotify,
 	.ifc_class	= 0xff,
 	.ifc_subclass	= 0x42,
@@ -198,9 +198,9 @@ static struct udc_gadget fastboot_gadget = {
 };
 
 /* todo: give lk strtoul and nuke this */
-static unsigned hex2unsigned(const char *x)
+STATIC UINTN hex2unsigned(const CHAR8 *x)
 {
-    unsigned n = 0;
+    UINTN n = 0;
 
     while(*x) {
         switch(*x) {
@@ -225,10 +225,10 @@ static unsigned hex2unsigned(const char *x)
     return n;
 }
 
-void 
+VOID 
 FastbootAck(
-	const char *Code, 
-	const char *Reason
+	const CHAR8 *Code, 
+	const CHAR8 *Reason
 	//BOOLEAN ChangeState
 )
 {
@@ -250,26 +250,26 @@ FastbootAck(
 	}
 }
 
-void 
+VOID 
 FastbootFail(
-	const char *Reason
+	const CHAR8 *Reason
 )
 {
 	FastbootAck("FAIL", Reason);
 }
 
-void 
+VOID 
 FastbootOkay(
-	const char *Info
+	const CHAR8 *Info
 )
 {
 	FastbootAck("OKAY", Info);
 }
 
-void 
+VOID 
 FastbootRegister(
-	const char *Prefix,
-	void (*Handle)(const char *Arg, void *Data, unsigned Size))
+	const CHAR8 *Prefix,
+	VOID (*Handle)(const CHAR8 *Arg, VOID *Data, UINTN Size))
 {
 	struct fastboot_cmd *Command;
 
@@ -283,10 +283,10 @@ FastbootRegister(
 	}
 }
 
-void 
+VOID 
 FastbootPublish(
-	const char *Name, 
-	const char *Value
+	const CHAR8 *Name, 
+	const CHAR8 *Value
 )
 {
 	struct fastboot_var *Variable;
@@ -300,16 +300,16 @@ FastbootPublish(
 	}
 }
 
-static void 
+STATIC VOID 
 CommandDownload(
-	const char *Arg, 
-	void *Data, 
-	unsigned Size
+	const CHAR8 *Arg, 
+	VOID *Data, 
+	UINTN size
 )
 {
-	char Response[FASTBOOT_COMMAND_MAX_LENGTH];
-	unsigned Length = hex2unsigned(Arg);
-	int r;
+	CHAR8 Response[FASTBOOT_COMMAND_MAX_LENGTH];
+	UINTN Length = hex2unsigned(Arg);;
+	UINTN r;
 
 	// free old data
   	if(DownloadBase) {
@@ -349,14 +349,14 @@ CommandDownload(
   	FastbootOkay("");
 }
 
-static void 
+STATIC VOID 
 FastbootCommandLoop(
-	void
+	VOID
 )
 {
 	struct fastboot_cmd *Command;
-	int r;
-	dprintf(INFO,"fastboot: processing commands\n");
+	UINTN r;
+	DEBUG((EFI_D_ERROR,"fastboot: processing commands\n"));
 
 	UINT8* Buffer = AllocateAlignedPages(ArmDataCacheLineLength(), ROUNDUP(4096, ArmDataCacheLineLength()));
     ASSERT(Buffer);
@@ -411,9 +411,9 @@ stop:
 	}
 }
 
-static void 
+STATIC VOID 
 FastbootHandler(
-	void *arg
+	VOID *arg
 )
 {
 	for (;;) {
@@ -437,11 +437,11 @@ ExitBootServicesEvent (
 	udc_stop();
 }
 
-static void 
+STATIC VOID 
 CommandGetVar(
-	const char *arg, 
-	void *data, 
-	unsigned sz
+	const CHAR8 *arg, 
+	VOID *data, 
+	UINTN sz
 )
 {
 	struct fastboot_var *var;
@@ -459,9 +459,9 @@ CommandGetVar(
 STATIC
 VOID
 CommandFlashEsp(
-    const char *Arg,
-    void *Data,
-    unsigned Size
+    const CHAR8 *Arg,
+    VOID *Data,
+    UINTN Size
 )
 {
     EFI_STATUS Status;
@@ -592,9 +592,9 @@ CallExitBS(
 
 VOID 
 CommandBoot(
-    const char *arg, 
-    void *data, 
-    unsigned sz) 
+    const CHAR8 *arg, 
+    VOID *data, 
+    UINTN sz) 
 {
     DEBUG((EFI_D_ERROR, "BOOT CALLED, size=%u\n", sz));
 
@@ -646,11 +646,11 @@ CommandBoot(
     Entry(0, 0, (UINTN*)hdr->tags_addr);
 }
 
-void 
+VOID 
 CommandReboot(
-	const char *arg, 
-	void *data, 
-	unsigned sz) 
+	const CHAR8 *arg, 
+	VOID *data, 
+	UINTN sz) 
 {
     ResetCold();
 }
