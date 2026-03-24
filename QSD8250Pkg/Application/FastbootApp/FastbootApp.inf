@@ -21,22 +21,19 @@
   
 [LibraryClasses]
   ArmLib
-  CacheMaintenanceLib
-  UefiApplicationEntryPoint
-  UefiLib
-  UefiBootServicesTableLib 
-  MemoryAllocationLib 
   BaseMemoryLib
-  TimerLib
+  CacheMaintenanceLib
+  MemoryAllocationLib
   IoLib
   ResetSystemLib
-  UefiBootManagerLib
+  TimerLib
+  UefiApplicationEntryPoint
+  UefiBootServicesTableLib
+  UefiLib
   UsbLib
-  # DevicePathLib
 
 [Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
   gArmTokenSpaceGuid.PcdSystemMemoryBase
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor
   gQSD8250PkgTokenSpaceGuid.PcdMachType
 

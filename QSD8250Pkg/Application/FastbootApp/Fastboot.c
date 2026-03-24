@@ -27,31 +27,23 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <Library/ArmLib.h>
-#include <Library/CacheMaintenanceLib.h>
+#include <Chipset/KernelOffsets.h>
 #include <Uefi.h>
-#include <Library/UefiLib.h>
-#include <Library/BaseMemoryLib.h>
+#include <Library/ArmLib.h>
 #include <Library/BaseLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/CacheMaintenanceLib.h>
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
-#include <Library/ArmLib.h>
-
-#include <Library/PlatformResetLib.h>
-#include <Library/MemoryAllocationLib.h>
-#include <Library/UefiBootServicesTableLib.h>
-
 #include <Library/LKEnvLib.h>
-#include <Library/MallocLib.h>
-#include <Library/LcmLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/PlatformResetLib.h>
 #include <Library/udc.h>
-#include <Library/hsusb.h>
-
-#include <Chipset/KernelOffsets.h>
-
+#include <Library/hsusb.h> // must come after LKEnvLib for now
+#include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiLib.h>
 #include "Bootimg.h"
-#include "fastboot.h"
+#include "Fastboot.h"
 
 #define BASE_ADDR FixedPcdGet32(PcdSystemMemoryBase)
 
