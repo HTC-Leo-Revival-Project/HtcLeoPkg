@@ -629,6 +629,9 @@ CommandBoot(
     }
     DEBUG((EFI_D_ERROR, "\n"));
 
+	// Ack before jumping
+	FastbootOkay("");
+
     VOID (*Entry)(UINTN, UINTN, UINTN*) =
         (VOID (*)(UINTN, UINTN, UINTN*))kernel_dst;
 
@@ -646,6 +649,7 @@ CommandReboot(
 	VOID *data, 
 	UINTN sz) 
 {
+	FastbootOkay("");
     ResetCold();
 }
 
