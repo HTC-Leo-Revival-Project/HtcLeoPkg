@@ -1,0 +1,1 @@
+CHAR8* GenerateAndroidSerial(CONST CHAR8 *Cid, CONST CHAR8 *Imei);

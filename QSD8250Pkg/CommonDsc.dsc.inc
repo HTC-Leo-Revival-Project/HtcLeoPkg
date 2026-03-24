@@ -372,7 +372,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdDefaultTerminalType|4
 
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"Htc Leo Revival Project"
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"240701"
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"260323"
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareRevision|0x00240701
 
   # Memory protection

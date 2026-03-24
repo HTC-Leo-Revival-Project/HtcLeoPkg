@@ -14,7 +14,10 @@ typedef struct {
     DeviceType type;
     BOOLEAN cLK;
     BOOLEAN nandBoot;
-    char *cmdline;
+    CHAR8 *cmdline;
+    CHAR8* Imei;
+    CHAR8* Cid;
+    CHAR8* SerialNumber;
 } HtcDevice;
 
 #endif

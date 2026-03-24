@@ -7,8 +7,9 @@
   ENTRY_POINT                    = DeviceDetectionDxeInit
 
 [Sources]
-  DeviceDetectionDxe.c
   Atags.c
+  DeviceDetectionDxe.c
+  SerialGenerator.c
   Spl.c
 
 [Packages]
