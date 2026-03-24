@@ -556,6 +556,40 @@ CommandFlashEsp(
     FastbootOkay("");
 }
 
+VOID
+CallExitBS(
+    IN EFI_HANDLE ImageHandle, 
+    IN EFI_SYSTEM_TABLE *SystemTable
+)
+{
+    EFI_STATUS Status;
+    
+    UINTN MemoryMapSize;
+    EFI_MEMORY_DESCRIPTOR *MemoryMap;
+    UINTN LocalMapKey;
+    UINTN DescriptorSize;
+    UINT32 DescriptorVersion;
+    MemoryMap = NULL;
+    MemoryMapSize = 0;
+    
+    /* Get the memory map */
+    do {  
+        Status = gBS->GetMemoryMap(&MemoryMapSize, MemoryMap, &LocalMapKey, &DescriptorSize,&DescriptorVersion);
+        if (Status == EFI_BUFFER_TOO_SMALL){
+            MemoryMap = AllocatePool(MemoryMapSize + 1);
+            Status = gBS->GetMemoryMap(&MemoryMapSize, MemoryMap, &LocalMapKey, &DescriptorSize,&DescriptorVersion);      
+        } else {
+            /* Status is likely success - let the while() statement check success */
+        }
+    
+    } while (Status != EFI_SUCCESS);
+
+    DEBUG((EFI_D_INFO, "Exit BS\n"));
+    gBS->ExitBootServices(ImageHandle, LocalMapKey);
+}
+
+
+
 VOID 
 CommandBoot(
     const char *arg, 
@@ -564,18 +598,14 @@ CommandBoot(
 {
     DEBUG((EFI_D_ERROR, "BOOT CALLED, size=%u\n", sz));
 
-    CopyMem(KernelLoadAddress, data, sz);
-    UINT8 *buf = (UINT8 *)KernelLoadAddress;
-
     // Check magic
-    if (CompareMem(buf, BOOT_MAGIC, BOOT_MAGIC_SIZE) != 0) {
+    if (CompareMem(data, BOOT_MAGIC, BOOT_MAGIC_SIZE) != 0) {
         DEBUG((EFI_D_ERROR, "Not an Android boot image!\n"));
         return;
     }
 
-    ANDROID_BOOT_IMG_HDR *hdr = (ANDROID_BOOT_IMG_HDR *)buf;
-
-    DEBUG((EFI_D_ERROR, "Boot Image Header:\n"));
+    ANDROID_BOOT_IMG_HDR *hdr = (ANDROID_BOOT_IMG_HDR *)data;
+	DEBUG((EFI_D_ERROR, "Boot Image Header:\n"));
     DEBUG((EFI_D_ERROR, "Kernel size: %u\n", hdr->kernel_size));
     DEBUG((EFI_D_ERROR, "Ramdisk size: %u\n", hdr->ramdisk_size));
     DEBUG((EFI_D_ERROR, "Kernel addr: 0x%x\n", hdr->kernel_addr));
@@ -585,18 +615,35 @@ CommandBoot(
     DEBUG((EFI_D_ERROR, "Cmdline: %a\n", hdr->cmdline));
 
     UINTN page_size = hdr->page_size;
+
     UINTN kernel_offset = page_size;
-    UINTN ramdisk_offset = kernel_offset + ((hdr->kernel_size + page_size - 1) & ~(page_size - 1));
+    UINTN kernel_size   = hdr->kernel_size;
 
-    UINT8 *kernel_ptr = buf + kernel_offset;
-    UINT8 *ramdisk_ptr = buf + ramdisk_offset;
+    UINT8 *buf = (UINT8 *)data;
+    UINT8 *kernel_src = buf + kernel_offset;
 
-    // Dump first 25 bytes of kernel
-    DEBUG((EFI_D_ERROR, "First 25 bytes of kernel:\n"));
-    for (UINTN i = 0; i < 25 && i < hdr->kernel_size; i++) {
-        DEBUG((EFI_D_ERROR, "%02x ", kernel_ptr[i]));
+    UINT8 *kernel_dst = (UINT8 *)KernelLoadAddress;
+
+    DEBUG((EFI_D_ERROR, "Copying kernel to 0x%p\n", kernel_dst));
+
+    CopyMem(kernel_dst, kernel_src, kernel_size);
+
+    // Optional: dump first bytes of kernel
+    DEBUG((EFI_D_ERROR, "First 25 bytes of loaded kernel:\n"));
+    for (UINTN i = 0; i < 25 && i < kernel_size; i++) {
+        DEBUG((EFI_D_ERROR, "%02x ", kernel_dst[i]));
     }
     DEBUG((EFI_D_ERROR, "\n"));
+
+    VOID (*Entry)(UINTN, UINTN, UINTN*) =
+        (VOID (*)(UINTN, UINTN, UINTN*))kernel_dst;
+
+	CallExitBS(gImageHandle, gST);
+
+    DEBUG((EFI_D_ERROR, "Jumping to kernel at 0x%p\n", Entry));
+
+    // Jump (ARM Linux convention)
+    Entry(0, 0, (UINTN*)hdr->tags_addr);
 }
 
 void 
