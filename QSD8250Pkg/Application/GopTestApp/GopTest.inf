@@ -1,0 +1,29 @@
+[Defines] 
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = GopTestApp
+  FILE_GUID                      = 93be6759-7d1a-4d69-986d-d78e54c9f93F
+  MODULE_TYPE                    = UEFI_APPLICATION 
+  VERSION_STRING                 = 0.1 
+  ENTRY_POINT                    = UefiMain
+
+
+[Sources]
+  GopTest.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+
+[LibraryClasses]
+  UefiApplicationEntryPoint
+  UefiLib
+  UefiBootServicesTableLib 
+  MemoryAllocationLib 
+  BaseMemoryLib
+  DxeServicesLib
+  BmpSupportLib
+
+[Protocols]
+  gEfiGraphicsOutputProtocolGuid
