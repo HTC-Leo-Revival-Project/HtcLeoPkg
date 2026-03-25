@@ -368,9 +368,6 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
             
             // Boot the image
             BootImage(ImageHandle, SystemTable, KernelBuffer);
-
-            // Clean up and loop if booting failed
-            goto cleanup;
         }
 
         Status = LoadFileFromSDCard(ImageHandle, SystemTable, RamdiskPath, 
