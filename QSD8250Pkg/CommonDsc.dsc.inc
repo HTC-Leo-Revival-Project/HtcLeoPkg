@@ -169,6 +169,7 @@
   StrLib|QSD8250Pkg/Library/StrLib/StrLib.inf
   PTableLib|QSD8250Pkg/Library/PTableLib/PTableLib.inf
   SmemLib|QSD8250Pkg/Drivers/SmemDxe/SmemImplLib.inf
+  DMALib|QSD8250Pkg/Library/DMALib/DMALib.inf
   KeypadDeviceHelperLib|QSD8250Pkg/Library/KeypadDeviceHelperLib/KeypadDeviceHelperLib.inf
   KeypadDeviceImplLib|QSD8250Pkg/Library/KeypadDeviceImplLib/KeypadDeviceImplLib.inf
   MallocLib|QSD8250Pkg/Library/MallocLib/MallocLib.inf
@@ -517,6 +518,7 @@
   QSD8250Pkg/Drivers/KeypadDxe/KeypadDxe.inf
   QSD8250Pkg/GPLDrivers/I2CDxe/I2CDxe.inf
   QSD8250Pkg/Drivers/MicroPDxe/MicroPDxe.inf
+  QSD8250Pkg/Drivers/NandDxe/NandDxe.inf
   
   #
   # Virtual Keyboard

@@ -43,6 +43,7 @@ STATIC struct ReservedMemory {
     { 0x00400000, 0x02100000 },    // AMSS
     { 0x10000000, 0x01800000 },    // QDSP6
     { 0x2FFC0000, 0x00040000 },    // PSTORE
+    { 0xa9400000, 0x00400000 },    // DMA ENGINE
 #if ENABLEUART == 1
     { 0xA9A00000, 0x00001000 },    //UART
 #endif
