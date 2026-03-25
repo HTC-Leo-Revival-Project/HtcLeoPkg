@@ -144,3 +144,8 @@ APRIORI DXE {
   INF QSD8250Pkg/Application/HtcLeoMenuApp/HtcLeoMenuApp.inf
   INF QSD8250Pkg/Drivers/LogoDxe/LogoDxe.inf
 
+  # FastBootResources
+FILE FREEFORM = 12345678-1234-1234-1234-123456789ABC {
+  SECTION RAW =  QSD8250Pkg/Application/FastbootApp/Background.bmp
+}
+
