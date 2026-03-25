@@ -11,6 +11,7 @@
 
 [Sources]
   Fastboot.c
+  GopBmpHelper.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -31,6 +32,9 @@
   UefiBootServicesTableLib
   UefiLib
   UsbLib
+  FrameBufferConfigLib
+  DxeServicesLib
+  BmpSupportLib
 
 [Pcd]
   gArmTokenSpaceGuid.PcdSystemMemoryBase

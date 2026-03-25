@@ -34,6 +34,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/CacheMaintenanceLib.h>
 #include <Library/DebugLib.h>
+#include <Library/FrameBufferConfigLib.h>
 #include <Library/IoLib.h>
 #include <Library/LKEnvLib.h>
 #include <Library/MemoryAllocationLib.h>
@@ -44,6 +45,7 @@
 #include <Library/UefiLib.h>
 #include "Bootimg.h"
 #include "Fastboot.h"
+#include "GopBmpHelper.h"
 
 #define BASE_ADDR FixedPcdGet32(PcdSystemMemoryBase)
 
@@ -427,20 +429,20 @@ ExitBootServicesEvent (
 
 STATIC VOID 
 CommandGetVar(
-	const CHAR8 *arg, 
-	VOID *data, 
-	UINTN sz
+    const CHAR8 *arg, 
+    VOID *data, 
+    UINTN sz
 )
 {
-	struct fastboot_var *var;
+    struct fastboot_var *var;
 
-	for (var = VariableList; var; var = var->next) {
-		if (!strcmp(var->name, arg)) {
-			FastbootOkay(var->value);
-			return;
-		}
-	}
-	FastbootOkay("");
+    for (var = VariableList; var; var = var->next) {
+        if (!strcmp(var->name, arg)) {
+            FastbootOkay(var->value);
+            return;
+        }
+    }
+    FastbootOkay("");
 }
 
 
@@ -672,52 +674,101 @@ StartFastboot(
 	IN EFI_HANDLE ImageHandle, 
 	IN EFI_SYSTEM_TABLE *SystemTable)
 {
-	INT32 r;
+  INT32 r;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop = NULL;
 
-	EFI_STATUS Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
-	ASSERT_EFI_ERROR (Status);
+  VOID *ImageData = NULL;
+  UINTN ImageSize = 0;
 
-    FastbootRegister("boot", CommandBoot);
-	FastbootRegister("reboot", CommandReboot);
-	FastbootPublish("product", "EDK2 LEO");
-	FastbootPublish("kernel", "lk");
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Blt = NULL;
+  UINTN Width = 0;
+  UINTN Height = 0;
 
-	// Init UDC first
-    r = udc_init(&surf_udc_device);
-	ASSERT(r==0);
+  PaintScreen(0xFFFF);
 
-    Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
-    ASSERT_EFI_ERROR(Status);
+ 
 
-	in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
-	ASSERT(in==0);
-	out = udc_endpoint_alloc(UDC_TYPE_BULK_OUT, 512);
-	ASSERT(out==0);
+  EFI_STATUS Status = gBS->LocateProtocol(
+                        &gEfiGraphicsOutputProtocolGuid,
+                        NULL,
+                        (VOID**)&Gop
+                      );
+  if (EFI_ERROR(Status)) {
+    DEBUG((EFI_D_INFO | EFI_D_LOAD, "Failed to locate GOP: %r\n", Status));
+    return Status;
+  }
 
-	fastboot_endpoints[0] = in;
-	fastboot_endpoints[1] = out;
+   DEBUG((EFI_D_INFO | EFI_D_LOAD, "Loading BMP from firmware...\n"));
 
-	req = udc_request_alloc();
-	ASSERT(req==0);
+  Status = LoadBmpFromFV(&ImageData, &ImageSize);
+  if (EFI_ERROR(Status)) {
+    DEBUG((EFI_D_INFO | EFI_D_LOAD, "Failed to load BMP: %r\n", Status));
+    return Status;
+  }
 
-	r = udc_register_gadget(&fastboot_gadget);
-	ASSERT(r==0);
+  DEBUG((EFI_D_INFO | EFI_D_LOAD, "BMP loaded (%u bytes)\n", ImageSize));
 
-	FastbootRegister("getvar:", CommandGetVar);
-	FastbootRegister("download:", CommandDownload);
-	FastbootRegister("flash:esp:", CommandFlashEsp);
-	FastbootRegister("oem", CommandOEMHandler);
-	FastbootPublish("version", "0.5");
+  Status = ConvertBmpToBlt(ImageData, ImageSize, &Blt, &Width, &Height);
+  if (EFI_ERROR(Status)) {
+    DEBUG((EFI_D_INFO | EFI_D_LOAD, "Failed to convert BMP: %r\n", Status));
+    return Status;
+  }
 
-	r = udc_start();
-	ASSERT(r==0);
+  DEBUG((EFI_D_INFO | EFI_D_LOAD, "Image size: %ux%u\n", Width, Height));
 
-    FastbootHandler(NULL); // we don't use threads so just loop
+  Status = DrawBackground(Gop, Blt, Width, Height);
+  if (EFI_ERROR(Status)) {
+    DEBUG((EFI_D_INFO | EFI_D_LOAD, "Failed to draw image: %r\n", Status));
+    return Status;
+  }
 
-	if (mFastbootState!=STATE_STOPPED) {
-    	Status = gBS->CloseEvent(mExitBootServicesEvent);
-    	udc_stop();
-  	}
+  Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
+  ASSERT_EFI_ERROR (Status);
 
-	return EFI_SUCCESS;
+  FastbootRegister("boot", CommandBoot);
+  FastbootRegister("reboot", CommandReboot);
+  FastbootPublish("product", "EDK2 LEO");
+  FastbootPublish("kernel", "lk");
+
+  // Init UDC first
+  r = udc_init(&surf_udc_device);
+  ASSERT(r==0);
+
+  Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &txn_done);
+  ASSERT_EFI_ERROR(Status);
+
+  in = udc_endpoint_alloc(UDC_TYPE_BULK_IN, 512);
+  ASSERT(in==0);
+  out = udc_endpoint_alloc(UDC_TYPE_BULK_OUT, 512);
+  ASSERT(out==0);
+
+  fastboot_endpoints[0] = in;
+  fastboot_endpoints[1] = out;
+
+  req = udc_request_alloc();
+  ASSERT(req==0);
+
+  r = udc_register_gadget(&fastboot_gadget);
+  ASSERT(r==0);
+
+  FastbootRegister("getvar:", CommandGetVar);
+  FastbootRegister("download:", CommandDownload);
+  FastbootRegister("flash:esp:", CommandFlashEsp);
+  FastbootRegister("oem", CommandOEMHandler);
+  FastbootPublish("version", "0.5");
+
+  r = udc_start();
+  ASSERT(r==0);
+
+  FastbootHandler(NULL); // we don't use threads so just loop
+
+  if (mFastbootState!=STATE_STOPPED) {
+    Status = gBS->CloseEvent(mExitBootServicesEvent);
+    udc_stop();
+  }
+  if (Blt != NULL) {
+    FreePool(Blt);
+  }
+
+  return EFI_SUCCESS;
 }
