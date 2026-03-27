@@ -14,8 +14,6 @@
 #include <Library/SerialPortLib.h>
 #include <Library/MsmSerialPortLib.h>
 
-#define MSM_UART_PHYS FixedPcdGet32(PcdSerialRegisterBase)
-
 /**
   Initialize the serial device hardware.
   If no initialization is required, then return RETURN_SUCCESS.
@@ -25,48 +23,6 @@
   @retval RETURN_DEVICE_ERROR   The serial device could not be initialized.
 **/
 
-static inline void msm_write(unsigned int val, unsigned int off)
-{
-    *(int*)(MSM_UART_PHYS + off) = val;
-}
-
-static inline unsigned int msm_read(unsigned int off)
-{
-   return *(int*)(MSM_UART_PHYS + off);
-}
-
-static inline void debug_flush(void)
-{
-	while (!(msm_read(UART_SR) & UART_SR_TX_EMPTY)) ;
-}
-
-static inline int debug_getc(void)
-{
-	if (msm_read(UART_SR) & UART_SR_RX_READY) {
-		return msm_read(UART_RF);
-	} else {
-		return -1;
-	}
-}
-
-static inline void debug_putc(unsigned int c)
-{
-	while (!(msm_read(UART_SR) & UART_SR_TX_READY)) ;
-	msm_write(c, UART_TF);
-}
-
-static UINTN debug_puts(char *s)
-{
-  UINTN count = 0;
-	unsigned c;
-	while ((c = *s++)) {
-		if (c == '\n')
-			debug_putc('\r');
-		debug_putc(c);
-    count++;
-	}
-  return count;
-}
 
 
 RETURN_STATUS
@@ -100,14 +56,11 @@ SerialPortWrite (
   IN  UINTN   NumberOfBytes
   )
 {
-  UINTN               BytesSent;
-
-  BytesSent = 0;
+  UINTN BytesSent = 0;
   while (BytesSent < NumberOfBytes) {
-    // Check if FIFO is full and wait if it is.
-
-    while (!(msm_read(UART_SR) & UART_SR_TX_READY)) ;
-	  msm_write(Buffer[BytesSent], UART_TF);
+  while (!(MmioRead32((UINTN)MSM_UART1_PHYS + UART_SR) & UART_SR_TX_READY))
+		;
+   MmioWrite32 ((UINTN)MSM_UART1_PHYS + UART_TF, Buffer[BytesSent]); //base of uart + transfer offset
     BytesSent++;
   }
 
