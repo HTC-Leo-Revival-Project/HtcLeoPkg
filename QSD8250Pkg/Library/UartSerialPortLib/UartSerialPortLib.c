@@ -84,14 +84,25 @@ UINTN
 EFIAPI
 SerialPortRead (
   OUT UINT8   *Buffer,
-  IN  UINTN   NumberOfBytes
+  IN  UINTN    NumberOfBytes
   )
 {
-  UINTN               BytesRead;
-  UINT32              Data;
+  UINTN BytesRead = 0;
+  UINT32 Data;
+  UINTN Base = (UINTN)MSM_UART1_PHYS;
 
-  BytesRead = 0;
   while (BytesRead < NumberOfBytes) {
+
+    // Wait for RX data
+    while (!(MmioRead32(Base + UART_SR) & UART_SR_RX_READY))
+      ;
+
+    // Read byte
+    Data = MmioRead32(Base + UART_RF);
+    Buffer[BytesRead] = (UINT8)(Data & 0xFF);
+
+    // Echo it back immediately
+    SerialPortWrite(&Buffer[BytesRead], 1);
 
     BytesRead++;
   }
@@ -115,7 +126,9 @@ SerialPortPoll (
   VOID
   )
 {
-  return FALSE;
+  UINTN Base = (UINTN)MSM_UART1_PHYS;
+
+  return (MmioRead32(Base + UART_SR) & UART_SR_RX_READY) != 0;
 }
 
 /**
