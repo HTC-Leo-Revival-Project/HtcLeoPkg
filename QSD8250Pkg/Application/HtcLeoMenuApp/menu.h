@@ -24,6 +24,7 @@
 #include <Protocol/WatchdogTimer.h>
 #include "Booter/AndroidKernel.h"
 #include "bootreason.h"
+#include "TtyShell.h"
 #include <Chipset/iomap.h>
 #include <Device/DeviceType.h>
 #include <Protocol/HtcDeviceDetection.h>

@@ -19,6 +19,9 @@ FillMenu()
   UINTN Index = 0;
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
   MenuOptions[Index++] = (MenuEntry){L"Boot Android", FALSE, &BootAndroidKernel}; //WIP AND NOT READY YET FOR PUBLIC
+#if DEVICETYPE == 4
+  MenuOptions[Index++] = (MenuEntry){L"Serial TTY Shell", TRUE, &TtyShell};
+#endif
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},

@@ -15,6 +15,7 @@
   MemoryTools.c
   menu.c
   functions.c
+  TtyShell.c
   Booter/LinuxShim.S
   Booter/AndroidSDDir.c
   Booter/AndroidKernel.c
@@ -40,6 +41,7 @@
   UefiBootManagerLib
   DevicePathLib
   FrameBufferConfigLib
+  SerialPortLib
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
