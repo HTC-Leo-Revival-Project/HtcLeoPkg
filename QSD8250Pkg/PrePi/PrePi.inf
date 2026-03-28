@@ -1,0 +1,77 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PrePi
+  FILE_GUID                      = 556A7392-5DF4-4067-B85C-AFDA4CDA586D
+  MODULE_TYPE                    = SEC
+  VERSION_STRING                 = 1.0
+
+[Sources.common]
+  Pi.c
+
+[Sources.ARM]
+  ReleaseInfo.S | GCC
+  ProcessorSupport.S | GCC
+  ModuleEntryPoint.S | GCC
+
+[BuildOptions.ARM]
+  GCC:*_*_*_CC_FLAGS = -Werror -Wno-error=unused-function 
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  ArmPkg/ArmPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ArmPlatformPkg/ArmPlatformPkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+
+[LibraryClasses]
+  ArmLib
+  ArmMmuLib
+  BaseLib
+  DebugLib
+  IoLib
+  ExtractGuidedSectionLib
+  # LzmaCustomDecompressLib
+  PeCoffGetEntryPointLib
+  PrePiHobListPointerLib
+  CacheMaintenanceLib
+  DebugAgentLib
+  SerialPortLib
+  MemoryAllocationLib
+  PrePiMemoryAllocationLib
+  PerformanceLib
+  HobLib
+  # CompilerIntrinsicsLib
+  MemoryInitPeiLib
+  PlatformPeiLib
+  FrameBufferConfigLib
+
+[FixedPcd]
+  # gArmTokenSpaceGuid.PcdCpuVectorBaseAddress
+  gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate
+  gEmbeddedTokenSpaceGuid.PcdPrePiStackBase
+  gEmbeddedTokenSpaceGuid.PcdPrePiStackSize
+  gArmTokenSpaceGuid.PcdFvBaseAddress
+  gArmTokenSpaceGuid.PcdFvSize
+  gArmTokenSpaceGuid.PcdFdBaseAddress
+  gArmTokenSpaceGuid.PcdFdSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize
+  gArmPlatformTokenSpaceGuid.PcdCoreCount
+
+  gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize  
+
+[Pcd]
+  gArmTokenSpaceGuid.PcdSystemMemoryBase
+  gArmTokenSpaceGuid.PcdSystemMemorySize
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
+
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolBase
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolSize
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferAddress
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferWidth
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferHeight
+  gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferPixelBpp
