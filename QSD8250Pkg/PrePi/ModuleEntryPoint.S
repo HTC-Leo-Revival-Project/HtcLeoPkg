@@ -53,6 +53,17 @@ _ModuleEntryPoint:
   
   /* Invalidate TLB */
   bl ASM_PFX(ArmInvalidateTlb)
+
+_SetupExceptionVector:
+  LoadConstantToReg (FixedPcdGet32(PcdCpuVectorBaseAddress), r0)
+  ldr r1, dead
+  mov r2, #0
+
+_FillVectors:
+  str     r1, [r0, r2]
+  adds    r2, r2, #8      /* Fill every 8 byte */
+  cmp     r2, #0x800      /* Vector Table Size */
+  bne     _FillVectors
     
 _SetupPrimaryCoreStack:
   ldr r0, _StackBase     /* Stack base arg0 */

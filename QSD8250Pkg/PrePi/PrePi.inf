@@ -48,7 +48,7 @@
   FrameBufferConfigLib
 
 [FixedPcd]
-  # gArmTokenSpaceGuid.PcdCpuVectorBaseAddress
+  gArmTokenSpaceGuid.PcdCpuVectorBaseAddress
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate
   gEmbeddedTokenSpaceGuid.PcdPrePiStackBase
   gEmbeddedTokenSpaceGuid.PcdPrePiStackSize
