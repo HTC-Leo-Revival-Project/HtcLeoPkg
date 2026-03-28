@@ -105,7 +105,7 @@ function _build() {
 		fi
 	fi
 
-	make -C BootShim UEFI_BASE=0x2C000000 UEFI_SIZE=0x00100000
+	make -C BootShim UEFI_BASE=0x02500000 UEFI_SIZE=0x00100000
 	if [ $? -ne 0 ]
 	then
 		echo "Failed to build BootShim" 1>&2
