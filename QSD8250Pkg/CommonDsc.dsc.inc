@@ -386,8 +386,8 @@
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x02640000 # 0x03240000
 
   # UEFI Memory Pool
-  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolBase|0x02B77000
-  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolSize|0x01489000
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolBase|0x2CD00000 #0x02B77000
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolSize|0x03300000 #0x01489000
 
   # We boot all processors here!!!!!
   gArmPlatformTokenSpaceGuid.PcdCoreCount|1

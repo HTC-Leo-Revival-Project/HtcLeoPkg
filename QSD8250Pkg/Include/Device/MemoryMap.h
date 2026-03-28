@@ -68,12 +68,13 @@ static ARM_MEMORY_REGION_DESCRIPTOR_EX gDeviceMemoryDescriptorEx[] = {
 {0x02500000, 0x00100000, "UEFI FD",          AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
 {0x02600000, 0x00040000, "UEFI Stack",       AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
 {0x02640000, 0x00010000, "CPU Vectors",      AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
-{0x02650000, 0x00050000, "HLOS 5",           AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
+{0x02650000, 0x00050000, "HLOS 1",           AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
 {0x02A00000, 0x00177000, "Display Reserved", AddMem, MEM_RES, WRITE_THROUGH, MaxMem, WRITE_THROUGH},
-{0x02B77000, 0x01489000, "UEFI Mem Pool",    AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
+{0x02B77000, 0x01489000, "HLOS 2",           AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
 
 {0x10000000, 0x01800000, "QDSP6",            AddMem, SYS_MEM, SYS_MEM_CAP, Reserv, DEVICE},
-{0x11800000, 0x1E800000, "HLOS 5",           AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK},
+{0x11800000, 0x1B500000, "HLOS 3",           AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK},
+{0x2CD00000, 0x03300000, "UEFI Mem Pool",    AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
 //------------- Register Regions ----------
 {0xA0000000, 0x0C300000, "REG 1",            AddDev, MMAP_IO,  UNCACHEABLE, MmIO,   DEVICE},
 //------------- Terminator for MMU ----------
