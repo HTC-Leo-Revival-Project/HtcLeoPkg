@@ -51,11 +51,11 @@
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x08000000|UINT32|0x00000036 #0x00800000
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x10000|UINT32|0x00000038
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize|0x10000|UINT32|0x00000039
-  gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x03240000|UINT32|0x00000004
+  gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x0|UINT32|0x00000004
 
   # Memory allocation
-  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolBase|0x11800000|UINT64|0x00000a106
-  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolSize|0x03300000|UINT32|0x00000a107
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolBase|0x0|UINT64|0x00000a106
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolSize|0x0|UINT32|0x00000a107
 
   # Simple FrameBuffer
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferAddress|0|UINT32|0x0000a400
