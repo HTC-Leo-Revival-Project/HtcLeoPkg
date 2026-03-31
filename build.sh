@@ -42,6 +42,9 @@ function _clean() {
 		if [ -f BootShim/BootShim.bin ]; then
 			rm BootShim/BootShim.bin
 		fi
+		if [ -f QSD8250Pkg/GPLDrivers/ShellCodeLoaderDxe/Payload/Payload.bin ]; then
+			rm QSD8250Pkg/GPLDrivers/ShellCodeLoaderDxe/Payload/Payload.bin
+		fi
 		if [ -d workspace/Build ]; then
 			rm -r workspace/Build
 		fi
@@ -109,9 +112,11 @@ else
 fi
 
     echo "Building uefi for $DEVICE"
+	./build_payload.sh
 	build -n $NUM_CPUS -a ARM -t CLANGDWARF -p Platforms/Htc${DEVICE}/Htc${DEVICE}Pkg.dsc -b DEBUG
 
 	./build_boot_shim.sh
+
 	./build_boot_images.sh $DEVICE
 fi
 }

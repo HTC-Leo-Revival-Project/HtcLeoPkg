@@ -73,7 +73,8 @@ static ARM_MEMORY_REGION_DESCRIPTOR_EX gDeviceMemoryDescriptorEx[] = {
 {0x02B77000, 0x01489000, "HLOS 2",           AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
 
 {0x10000000, 0x01800000, "QDSP6",            AddMem, SYS_MEM, SYS_MEM_CAP, Reserv, DEVICE},
-{0x11800000, 0x1B500000, "HLOS 3",           AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK},
+{0x11800000, 0x1B4FFFD4, "HLOS 3",           AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK},
+{0x1334FFD4, 0x00000044, "Payload",          AddMem, SYS_MEM, SYS_MEM_CAP, Reserv, WRITE_BACK},
 {0x2CD00000, 0x03300000, "UEFI Mem Pool",    AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
 //------------- Register Regions ----------
 {0xA0000000, 0x0C300000, "REG 1",            AddDev, MMAP_IO,  UNCACHEABLE, MmIO,   DEVICE},

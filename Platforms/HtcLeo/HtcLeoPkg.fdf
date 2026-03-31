@@ -33,6 +33,12 @@ FV = FVMAIN_COMPACT
   # Charging App
   INF QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
   INF QSD8250Pkg/GPLDrivers/DeviceDetectionDxe/DeviceDetectionDxe.inf
+  INF QSD8250Pkg/GPLDrivers/ShellCodeLoaderDxe/ShellCodeLoader.inf
+
+  // Payload
+  FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E3FF {
+  SECTION RAW = QSD8250Pkg/GPLDrivers/ShellCodeLoaderDxe/Payload/Payload.bin
+  }
 
   // Mainline device tree blob
   FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E326 {

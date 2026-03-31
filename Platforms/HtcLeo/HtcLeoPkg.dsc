@@ -40,6 +40,9 @@
   # Charging
   QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
 
+  # Payload
+  QSD8250Pkg/GPLDrivers/ShellCodeLoaderDxe/ShellCodeLoader.inf
+
   # DeviceDetection
   QSD8250Pkg/GPLDrivers/DeviceDetectionDxe/DeviceDetectionDxe.inf
 
