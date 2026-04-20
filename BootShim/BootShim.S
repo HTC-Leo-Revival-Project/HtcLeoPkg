@@ -21,120 +21,110 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define DSB .byte 0x4f, 0xf0, 0x7f, 0xf5
-#define ISB .byte 0x6f, 0xf0, 0x7f, 0xf5
+#define DSB .byte 0x4F, 0xF0, 0x7F, 0xF5
+#define ISB .byte 0x6F, 0xF0, 0x7F, 0xF5
 #define WSPL_VADDR 0x80000000
 
 .text
 .globl _start
 _start:
-	b	_Reset
+	B		_reset
 
 //if EDK2 is loaded by wince spl add romhdr
 .org 0x40
-	.word 0x43454345
-	.word (romhdr-_start)+WSPL_VADDR  // virtual address of romhdr
-	.word romhdr-_start               // file address of romhdr
+	.word	0x43454345
+	.word	(romhdr-_start)+WSPL_VADDR	// virtual address of romhdr
+	.word	romhdr-_start				// file address of romhdr
 
 .org 0x00000900
 romhdr:
-	.word 0x2000000             // dllfirst
-	.word 0x2000000             // dlllast
-	.word WSPL_VADDR            // physfirst
-	.word WSPL_VADDR+0x000F0000 // physlast (using hardoded FV size, fix later?)
-	.word 0                     // nummods (no TOCentry after ROMHDR)
-	.word WSPL_VADDR+0x000F0000 // ulRAMStart
-	.word WSPL_VADDR+0x000F0000 // ulRAMFree
-	.word WSPL_VADDR+0x001F0000 // ulRAMEnd
-	.word 0                     // ulCopyEntries
-	.word 0                     // ulCopyOffset
-	.word 0                     // ulProfileLen
-	.word 0                     // ulProfileOffset
-	.word 0                     // numfiles
-	.word 0                     // ulKernelFlags
-	.word 0x80808080            // ulFSRamPercent
-	.word 0                     // ulDrivglobStart
-	.word 0                     // ulDrivglobLen
-	.hword 0x1C2                // usCPUType
-	.hword 0x2                  // usMiscFlags
-	.word 0                     // pExtensions
-	.word 0                     // ulTrackingStart
-	.word 0                     // ulTrackingLen
+	.word	0x02000000					// dllfirst
+	.word	0x02000000					// dlllast
+	.word	WSPL_VADDR					// physfirst
+	.word	WSPL_VADDR+0x000F0000		// physlast (using hardoded FV size, fix later?)
+	.word	0							// nummods (no TOCentry after ROMHDR)
+	.word	WSPL_VADDR+0x000F0000		// ulRAMStart
+	.word	WSPL_VADDR+0x000F0000		// ulRAMFree
+	.word	WSPL_VADDR+0x001F0000		// ulRAMEnd
+	.word	0							// ulCopyEntries
+	.word	0							// ulCopyOffset
+	.word	0							// ulProfileLen
+	.word	0							// ulProfileOffset
+	.word	0							// numfiles
+	.word	0							// ulKernelFlags
+	.word	0x80808080					// ulFSRamPercent
+	.word	0							// ulDrivglobStart
+	.word	0							// ulDrivglobLen
+	.hword	0x01C2						// usCPUType
+	.hword	0x0002						// usMiscFlags
+	.word	0							// pExtensions
+	.word	0							// ulTrackingStart
+	.word	0							// ulTrackingLen
 .org 0x00001000
 
-_Reset:
+_reset:
 	/* do some cpu setup */
-	mrc		p15, 0, r0, c1, c0, 0
-	bic		r0, r0, #(1<<15| 1<<13 | 1<<12)
-	bic		r0, r0, #(1<<2 | 1<<0)
-	orr		r0, r0, #(1<<1)
-	mcr		p15, 0, r0, c1, c0, 0
+	// From PrimeG2Pkg
+	/*
+				3322 2222 2222 1111 1111 1100 0000 0000
+				1098 7654 3210 9876 5432 1098 7654 3210
+	Clear bits	---- ---- ---- ---- ?-V- --RS ---- -CAM
+	Set bits	---- ---- ---- ---- ---I ---- ---- ----
+	*/
+	MRC		P15, 0, R0, CR1, CR0, 0		// read SCTLR
+	BIC		R0, R0, #0x0000A300
+	BIC		R0, R0, #0x00000007
+	ORR		R0, R0, #0x00001000
+	MCR		P15, 0, R0, CR1, CR0, 0		// write SCTLR
 
-_PrepareForBoot:
 	// Martijn Stolk's code so kernel will not crash. aux control register
-	MRC p15, 0, r0, c1, c0, 1
-	BIC r0, r0, #0x40
-	BIC r0, r0, #0x200000
-	MCR p15, 0, r0, c1, c0, 1
+	MRC		P15, 0, R0, CR1, CR0, 1		// read ACTLR
+	BIC		R0, R0, #0x40
+	BIC		R0, R0, #0x200000
+	MCR		P15, 0, R0, CR1, CR0, 1		// write ACTLR
 
 	// Disable VFP
-	MOV R0, #0
-	FMXR FPEXC, r0
-
-        // disable mmu
-	MRC p15, 0, r0, c1, c0, 0
-	BIC r0, r0, #(1<<0)
-	MCR p15, 0, r0, c1, c0, 0
-	ISB
+	MOV		R0, #0
+	FMXR	FPEXC, R0
 	
 	// Invalidate the UTLB
-	MOV r0, #0
-	MCR p15, 0, r0, c8, c7, 0
+	MOV		R0, #0
+	MCR		P15, 0, R0, CR8, CR7, 0
 
 	// Clean and invalidate cache - Ensure pipeline flush
-	MOV R0, #0
+	MOV		R0, #0
 	DSB
 	ISB
 
-_UefiSetup:
-	// From PrimeG2Pkg
-	// Disable Strict alignment checking & Enable Instruction cache
-  	bic     r0, r0, #0x00002300     /* clear bits 13, 9:8 (--V- --RS) */
-  	bic     r0, r0, #0x00000005     /* clear bits 0, 2 (---- -C-M) */
-  	bic     r0, r0, #0x00000002     /* Clear bit 1 (Alignment faults) */
-  	orr     r0, r0, #0x00001000     /* set bit 12 (I) enable I-Cache */
-  	mcr     p15, 0, r0, c1, c0, 0
-
-_Relocate:
 	/* see if we need to relocate */
-	adr	r0, _Payload 	// load the payload adress into r0
+	ADR		R0, _payload 	// load the payload adress into r0
 
-	ldr	r1, UefiBase 	// load the expected payload base into r1
-	cmp	r0, r1		 	// compare the adresses
-	beq	_Entry			// jump to entry if the adress is the same
-	ldr	r2, UefiSize
+	LDR		R1, uefibase 	// load the expected payload base into r1
+	CMP		R0, R1		 	// compare the adresses
+	BEQ		_entry			// jump to entry if the adress is the same
+	LDR		R2, uefisize
 
-_CopyLoop:
+_copyloop:
 	/* memcpy */
-	ldr	r3, [r0], #4
-	str	r3, [r1], #4
-	subs	r2, r2, #4	// substract the size that got copied from fd size
-	bgt	_CopyLoop		// branch if greater than zero
+	LDR		R3, [R0], #4
+	STR		R3, [R1], #4
+	SUBS	R2, R2, #4	// substract the size that got copied from fd size
+	BGT		_copyloop		// branch if greater than zero
 
 	/* we're relocated, jump to the right address */
 
-_Entry:
-	ldr		r5, UefiBase
-	bx		r5
+_entry:
+	LDR		R5, uefibase
+	BX		R5
 
-UefiBase:
-	.word UEFI_BASE
+uefibase:
+	.word	UEFI_BASE
 
-UefiSize:
-	.word UEFI_SIZE
+uefisize:
+	.word	UEFI_SIZE
 
 .ltorg
 
 .text
 .align 4
-_Payload:
+_payload:
