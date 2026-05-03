@@ -99,12 +99,10 @@ function _build() {
 
 	if [ ${PATCH1_APPLIED} -eq 1 ] && [ ${PATCH2_APPLIED} -eq 1 ]
 	then
-		echo "Both patches applied. Rebuilding BaseTools..."
-		make clean -C ../edk2/BaseTools
-		make -C ../edk2/BaseTools -j$(nproc)
-	else
-		echo "Not all patches were applied. Skipping BaseTools rebuild."
+		echo "Both patches applied successfully."
 	fi
+	make clean -C ../edk2/BaseTools
+	make -C ../edk2/BaseTools -j$(nproc)
 
 	if [ "${DEVICE}" == 'All' ]
 	then
