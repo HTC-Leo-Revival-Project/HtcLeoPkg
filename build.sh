@@ -97,7 +97,7 @@ function _build() {
 	fi
 	# We're using a prebuild yang binary for now, since the compiled version doesn't seem to produce a valid NBH for Leo
 	if [ ! -f ImageResources/Leo/yang ]; then
-		gcc ImageResources/Leo/yang/nbh.c ImageResources/Leo/yang/nbhextract.c ImageResources/Leo/yang/yang.c -o ImageResources/Leo/yangbin
+		gcc ImageResources/Leo/yang_src/nbh.c ImageResources/Leo/yang_src/nbhextract.c ImageResources/Leo/yang_src/yang.c -o ImageResources/Leo/yang
 		if [ $? -ne 0 ]
 		then
 			echo "Failed to build yang" 1>&2
