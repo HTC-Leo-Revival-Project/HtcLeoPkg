@@ -32,17 +32,17 @@ function _clean() {
 	for PlatformName in "${AvailablePlatforms[@]}"
 	do
 		if [ "${PlatformName}" != "All" ]; then
-			if [ -f "ImageResources/${DEVICE}/bootpayload.bin" ]
+			if [ -f "ImageResources/${PlatformName}/bootpayload.bin" ]
 			then
-				rm "ImageResources/${DEVICE}/bootpayload.bin"
+				rm "ImageResources/${PlatformName}/bootpayload.bin"
 			fi
-			if [ -f "ImageResources/${DEVICE}/os.nb" ]
+			if [ -f "ImageResources/${PlatformName}/os.nb" ]
 			then
-				rm "ImageResources/${DEVICE}/os.nb"
+				rm "ImageResources/${PlatformName}/os.nb"
 			fi
-			if [ -f "ImageResources/${DEVICE}/*.img" ]
+			if [ -f "ImageResources/${PlatformName}/*.img" ]
 			then
-				rm "ImageResources/${DEVICE}/*.img"
+				rm "ImageResources/${PlatformName}/*.img"
 			fi
 		fi
 		if [ -f "BootShim/BootShim.bin" ]
