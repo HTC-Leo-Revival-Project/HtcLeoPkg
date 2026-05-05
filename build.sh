@@ -32,28 +32,14 @@ function _clean() {
 	for PlatformName in "${AvailablePlatforms[@]}"
 	do
 		if [ "${PlatformName}" != "All" ]; then
-			if [ -f "ImageResources/${PlatformName}/bootpayload.bin" ]
-			then
-				rm "ImageResources/${PlatformName}/bootpayload.bin"
-			fi
-			if [ -f "ImageResources/${PlatformName}/os.nb" ]
-			then
-				rm "ImageResources/${PlatformName}/os.nb"
-			fi
-			if [ -f "ImageResources/${PlatformName}/*.img" ]
-			then
-				rm "ImageResources/${PlatformName}/*.img"
-			fi
-		fi
-		if [ -f "BootShim/BootShim.bin" ]
-		then
-			rm "BootShim/BootShim.bin"
-		fi
-		if [ -d "workspace/Build" ]
-		then
-			rm -r "workspace/Build"
+			rm -f "ImageResources/${PlatformName}/bootpayload.bin"
+			rm -f "ImageResources/${PlatformName}/os.nb"
+			rm -f "ImageResources/${PlatformName}/uefi.img"
+			rm -f "ImageResources/${PlatformName}/"*.nbh
 		fi
 	done
+	rm -f "BootShim/BootShim."{bin,elf}
+	rm -rf "workspace/Build"
 	echo "Artifacts removed"
 }
 
