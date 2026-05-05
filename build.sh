@@ -56,20 +56,9 @@ function _clean() {
 	done
 }
 
-# based on https://github.com/edk2-porting/edk2-msm/blob/master/build.sh#L47 
-function _build() {
-	local DEVICE="${1}"
-	shift
-	source "../edk2/edksetup.sh"
-
-	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
-
-	# Clean artifacts if needed
-	_clean
-	echo "Artifacts removed"
-
+function _patch_edk() {
 	echo "Patching EDK2 Source"
-
+	
 	PATCH1_APPLIED=0
 	PATCH2_APPLIED=0
 
@@ -101,6 +90,21 @@ function _build() {
 	then
 		echo "Both patches applied successfully."
 	fi
+}
+
+# based on https://github.com/edk2-porting/edk2-msm/blob/master/build.sh#L47 
+function _build() {
+	local DEVICE="${1}"
+	shift
+	source "../edk2/edksetup.sh"
+
+	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
+
+	# Clean artifacts if needed
+	_clean
+	echo "Artifacts removed"
+
+
 	make clean -C ../edk2/BaseTools
 	make -C ../edk2/BaseTools -j$(nproc)
 
@@ -130,6 +134,7 @@ function _build() {
 _check_args "${device}"
 if [ $IsValid == 1 ]
 then
+	_patch_edk
 	_build "${device}"
 else
 	echo "Build: Invalid platform"
