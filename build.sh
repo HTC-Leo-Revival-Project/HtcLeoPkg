@@ -54,11 +54,12 @@ function _clean() {
 			rm -r "workspace/Build"
 		fi
 	done
+	echo "Artifacts removed"
 }
 
 function _patch_edk() {
 	echo "Patching EDK2 Source"
-	
+
 	PATCH1_APPLIED=0
 	PATCH2_APPLIED=0
 
@@ -102,7 +103,6 @@ function _build() {
 
 	# Clean artifacts if needed
 	_clean
-	echo "Artifacts removed"
 
 
 	make clean -C ../edk2/BaseTools
