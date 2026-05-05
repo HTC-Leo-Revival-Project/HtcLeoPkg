@@ -101,10 +101,6 @@ function _build() {
 
 	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
 
-	# Clean artifacts if needed
-	_clean
-
-
 	make clean -C ../edk2/BaseTools
 	make -C ../edk2/BaseTools -j$(nproc)
 
@@ -134,6 +130,7 @@ function _build() {
 _check_args "${device}"
 if [ $IsValid == 1 ]
 then
+	_clean
 	_patch_edk
 	_build "${device}"
 else
