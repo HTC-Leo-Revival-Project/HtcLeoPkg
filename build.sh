@@ -104,27 +104,29 @@ function _build() {
 	make clean -C ../edk2/BaseTools
 	make -C ../edk2/BaseTools -j$(nproc)
 
+	platforms=()
+
 	if [ "${DEVICE}" == 'All' ]
 	then
-		echo "Building uefi for all platforms"
 		for PlatformName in "${AvailablePlatforms[@]}"
 		do
 			if [ "${PlatformName}" != 'All' ]
 			then
-				# Build
-				build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc" -b DEBUG
-				./build_boot_shim.sh
-				./build_boot_images.sh "${PlatformName}"
+				platforms+=("${PlatformName}")
 			fi
 		done
 	else
+		platforms+=("${DEVICE}")
+	fi
 
-		echo "Building uefi for ${DEVICE}"
-		build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${DEVICE}/Htc${DEVICE}Pkg.dsc" -b DEBUG
+	for PlatformName in "${platforms[@]}"
+	do
+		echo "Building uefi for ${PlatformName}"
+		build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc" -b DEBUG
 
 		./build_boot_shim.sh
-		./build_boot_images.sh "${DEVICE}"
-	fi
+		./build_boot_images.sh "${PlatformName}"
+	done
 }
 
 _check_args "${device}"
