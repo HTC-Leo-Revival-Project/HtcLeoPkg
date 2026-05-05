@@ -38,6 +38,8 @@ function _clean() {
 			rm -f "ImageResources/${PlatformName}/"*.nbh
 		fi
 	done
+	rm -f "ImageResources/Leo/nbgen"
+	rm -f "ImageResources/Leo/yangbin"
 	rm -f "BootShim/BootShim."{bin,elf}
 	rm -rf "workspace/Build"
 	echo "Artifacts removed"
@@ -83,6 +85,33 @@ function _patch_edk() {
 function _build() {
 	local DEVICE="${1}"
 	shift
+
+	# NBH creation
+	if [ ! -f ImageResources/Leo/nbgen ]; then
+		gcc -std=c99 ImageResources/Leo/nbgen.c -o ImageResources/Leo/nbgen
+		if [ $? -ne 0 ]
+		then
+			echo "Failed to build nbgen" 1>&2
+			return 1
+		fi
+	fi
+	# We're using a prebuild yang binary for now, since the compiled version doesn't seem to produce a valid NBH for Leo
+	if [ ! -f ImageResources/Leo/yang ]; then
+		gcc ImageResources/Leo/yang/nbh.c ImageResources/Leo/yang/nbhextract.c ImageResources/Leo/yang/yang.c -o ImageResources/Leo/yangbin
+		if [ $? -ne 0 ]
+		then
+			echo "Failed to build yang" 1>&2
+			return 1
+		fi
+	fi
+
+	make -C BootShim UEFI_BASE=0x2C000000 UEFI_SIZE=0x00100000
+	if [ $? -ne 0 ]
+	then
+		echo "Failed to build BootShim" 1>&2
+		return 1
+	fi
+
 	source "../edk2/edksetup.sh"
 
 	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
@@ -110,7 +139,6 @@ function _build() {
 		echo "Building uefi for ${PlatformName}"
 		build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc" -b DEBUG
 
-		./build_boot_shim.sh
 		./build_boot_images.sh "${PlatformName}"
 	done
 }
