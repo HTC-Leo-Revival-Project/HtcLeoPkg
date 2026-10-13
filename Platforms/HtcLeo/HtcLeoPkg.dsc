@@ -26,12 +26,13 @@
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = Platforms/$(PLATFORM_NAME)/$(PLATFORM_NAME)Pkg.fdf
 
-  DEFINE USE_SCREEN_FOR_SERIAL_OUTPUT = 1
+  DEFINE USE_UART_FOR_SERIAL_OUTPUT = 1
+  DEFINE USE_SCREEN_FOR_SERIAL_OUTPUT = 0
 
 !include QSD8250Pkg/CommonDsc.dsc.inc
 
 [BuildOptions.common]
-  GCC:*_*_ARM_CC_FLAGS = -DKP_LED_ENABLE_METHOD=1 -DDEVICETYPE=1 #Gpio
+  GCC:*_*_ARM_CC_FLAGS = -DKP_LED_ENABLE_METHOD=1 -DDEVICETYPE=1 -DENABLEUART=1 #Gpio
 
 [LibraryClasses.common]
   DS2746Lib|QSD8250Pkg/Library/DS2746Lib/DS2746.inf
@@ -49,6 +50,8 @@
   gArmTokenSpaceGuid.PcdSystemMemorySize|0x1E800000
 
   gQSD8250PkgTokenSpaceGuid.PcdMipiFrameBufferAddress|0x02A00000
+
+  gQSD8250PkgTokenSpaceGuid.PcdSerialRegisterBase|0xA9A00000
 
   gQSD8250PkgTokenSpaceGuid.PcdMachType|0x9DC
 

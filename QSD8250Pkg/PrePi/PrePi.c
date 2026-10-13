@@ -16,6 +16,7 @@
 #include <Library/TimerLib.h>
 #include <Library/PerformanceLib.h>
 #include <Library/FrameBufferConfigLib.h>
+#include <Library/GptTimerLib.h>
 
 #include <Ppi/GuidedSectionExtraction.h>
 #include <Ppi/ArmMpCoreInfo.h>
@@ -83,6 +84,14 @@ PrePiMain (
 
   // Initialize the architecture specific bits
   ArchInitialize ();
+
+  // Start the AP generic timer (emulator builds only, see build.sh --emu).
+  // Nothing in this package enables the GPT on hardware, and on the emulator
+  // cLK leaves it stopped, so MicroSecondDelay()/NanoSecondDelay() would spin
+  // forever and the first driver that asks for a delay (ClockDxe) would hang.
+#if EMU_WORKAROUND
+  TimerEarlyInit ();
+#endif
 
   // Reconfigure the framebuffer based on PCD
   ReconfigFb(FixedPcdGet32(PcdMipiFrameBufferPixelBpp));
@@ -183,8 +192,14 @@ CEntryPoint (
   // Enable Instruction Caches on all cores.
   ArmEnableInstructionCache ();
 
-  // Wait the Primary core has defined the address of the Global Variable region (event: ARM_CPU_EVENT_DEFAULT)
-  ArmCallWFE ();
+  // Wait the Primary core has defined the address of the Global Variable region (event: ARM_CPU_EVENT_DEFAULT).
+  // This is the multicore startup barrier and nothing here raises that event, so on
+  // this ArmPlatformPrePiUniCore build there is no second core to signal it and the
+  // wfe never returns - it hangs here, before PrePiMain, with IRQs masked.  Only the
+  // non-master cores of a multicore build ever wait.
+  if (MpId != 0) {
+    ArmCallWFE ();
+  }
 
   PrePiMain (UefiMemoryBase, StacksBase, StartTimeStamp);
 
