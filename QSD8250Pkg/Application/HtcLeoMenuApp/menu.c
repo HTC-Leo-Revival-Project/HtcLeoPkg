@@ -18,7 +18,8 @@ FillMenu()
 {
   UINTN Index = 0;
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
-  MenuOptions[Index++] = (MenuEntry){L"Boot Android", FALSE, &BootAndroidKernel}; //WIP AND NOT READY YET FOR PUBLIC
+  MenuOptions[Index++] = (MenuEntry){L"Boot Android", TRUE, &BootAndroidKernel};
+  MenuOptions[Index++] = (MenuEntry){L"Fastboot", TRUE, &StartFastbootApp};
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
@@ -45,7 +46,8 @@ VOID DrawMenu()
 
   // Print menu title
   gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));
-  gST->ConOut->SetCursorPosition(gST->ConOut, PRINT_CENTRE_COLUMN, 1);
+  gST->ConOut->SetCursorPosition( gST->ConOut, PRINT_CENTRE_COLUMN-4, 1 ); // offset by 4 so the next line will center under the name
+  
   Print(L" %s \n", (CHAR16 *)PcdGetPtr(PcdFirmwareVendor));
 
   gST->ConOut->SetCursorPosition(gST->ConOut, PRINT_CENTRE_COLUMN, 2);
@@ -162,9 +164,6 @@ VOID HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   }
 }
 
-
-
-
 VOID RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   SelectedIndex     = 0;
@@ -203,6 +202,25 @@ FeedWatchdogCallback (
     }
 }
 
+// 10 ms countdown slice, in 100 ns units.
+#define TIMEOUT_SLICE_100NS  (10 * 1000 * 10)
+
+/**
+  Cancel the boot countdown timer.
+
+  @param[in]  Event  The timer event to cancel.
+**/
+STATIC
+VOID
+CancelBootTimer (
+  IN EFI_EVENT  Event
+  )
+{
+  if (Event != NULL) {
+    gBS->SetTimer (Event, TimerCancel, 0);
+  }
+}
+
 EFI_STATUS EFIAPI
 ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -210,6 +228,9 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
   EFI_INPUT_KEY key;
   UINT32 Timeout = 400; //TODO: Get from pcd
   EFI_EVENT TimerEvent;
+  EFI_EVENT BootTimerEvent;
+  EFI_EVENT BootEvents[2];
+  UINTN      EventIndex;
 
     Status = gBS->LocateProtocol(&gHtcDeviceDetectionProtocolGuid, NULL, (VOID **)&DeviceDetectionProtocol);
     if (EFI_ERROR(Status)) {
@@ -253,41 +274,111 @@ ShellAppMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 
   Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
   ASSERT_EFI_ERROR(Status);
+  #if DEVICETYPE == 4
+    CONST CHAR16 *buttonString = L"Jogball";
+  #else
+    CONST CHAR16 *buttonString = L"Home";
+  #endif
 
-  Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
+  Print(L" Press %s within %d seconds to boot to menu\n", buttonString, (Timeout / 100));
   Print(L" Back key to boot from ESP\n");
   Print(L" Power key to boot to builtin UEFI Shell\n");
 
-  do {
-    Status = SystemTable->ConOut->SetCursorPosition(SystemTable->ConOut, 0, 0);
-    ASSERT_EFI_ERROR(Status);
+  //
+  // Boot countdown driven by a single timer event rather than a
+  // MicroSecondDelay() spin. EVT_TIMER has to be used on its own: adding
+  // EVT_NOTIFY_SIGNAL makes the core demand a non-NULL NotifyFunction and
+  // CreateEvent() fails with EFI_INVALID_PARAMETER.
+  //
+  Status = gBS->CreateEvent (EVT_TIMER, TPL_HIGH_LEVEL, NULL, NULL, &BootTimerEvent);
+  if (EFI_ERROR(Status)) {
+    DEBUG((EFI_D_ERROR, "Failed to create boot timer event: %r\n", Status));
+    return Status;
+  }
 
-    Print(L" Press Home within %d seconds to boot to menu\n", (Timeout / 100));
+  // Arm the whole countdown in one shot. Timeout counts 10 ms slices.
+  Status = gBS->SetTimer (BootTimerEvent, TimerRelative, Timeout * TIMEOUT_SLICE_100NS);
+  if (EFI_ERROR(Status)) {
+    DEBUG((EFI_D_ERROR, "Failed to arm boot timer: %r\n", Status));
+    gBS->CloseEvent (BootTimerEvent);
+    return Status;
+  }
 
-    Status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
+  // Wait on the countdown and the keypad together. WaitForEvent reads
+  // NumberOfEvents entries, so the array has to be exactly that long.
+  BootEvents[0] = BootTimerEvent;
+  BootEvents[1] = gST->ConIn->WaitForKey;
+  if (BootEvents[1] == NULL) {
+    DEBUG((EFI_D_ERROR, "Console input has no WaitForKey event\n"));
+    gBS->CloseEvent (BootTimerEvent);
+    return EFI_NOT_FOUND;
+  }
 
-    if (Status != EFI_NOT_READY) {
-      ASSERT_EFI_ERROR(Status);
+  while (TRUE) {
+    Status = SystemTable->ConOut->SetCursorPosition (SystemTable->ConOut, 0, 0);
+    ASSERT_EFI_ERROR (Status);
 
-      switch (key.ScanCode) {
-        case SCAN_HOME:
-          // home button
-          goto menu;
-          break;
-        case CHAR_BACKSPACE:
-          goto boot_esp;
-          break;
-        case SCAN_ESC:
-          StartShell(ImageHandle, SystemTable);
-          break;
-        default:
-          break;
-      }
+    Print (L" Press %s within %d seconds to boot to menu\n", buttonString, (Timeout / 100));
+
+    Status = gBS->WaitForEvent (2, BootEvents, &EventIndex);
+    if (EFI_ERROR (Status)) {
+      DEBUG((EFI_D_ERROR, "WaitForEvent failed: %r\n", Status));
+      break;
     }
-    // TODO: Use events?
-    MicroSecondDelay(10000);
-    Timeout--;
-  } while (Timeout > 1);
+
+    if (EventIndex == 0) {
+      // Countdown expired.
+      break;
+    }
+
+    // EventIndex == 1: the keypad signalled, a key is pending.
+
+    Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &key);
+    if (Status == EFI_NOT_READY) {
+      continue;
+    }
+    ASSERT_EFI_ERROR (Status);
+
+    switch (key.ScanCode) {
+      case SCAN_HOME:
+        // home button
+#if DEVICETYPE != 4
+        CancelBootTimer (BootTimerEvent);
+        goto menu;
+#endif
+        break;
+      case CHAR_BACKSPACE:
+        CancelBootTimer (BootTimerEvent);
+        goto boot_esp;
+        break;
+      case SCAN_ESC:
+        CancelBootTimer (BootTimerEvent);
+        StartShell (ImageHandle, SystemTable);
+        break;
+      default:
+        switch (key.UnicodeChar) {
+          case CHAR_CARRIAGE_RETURN:
+#if DEVICETYPE == 4
+            CancelBootTimer (BootTimerEvent);
+            goto menu;
+#endif
+            break;
+
+          case CHAR_TAB:
+            break;
+
+          case CHAR_BACKSPACE:
+            break;
+          default:
+            break;
+        }
+        break;
+    }
+  }
+
+  // Timed out (or the wait failed): fall through to booting the ESP.
+  CancelBootTimer (BootTimerEvent);
+  gBS->CloseEvent (BootTimerEvent);
 
 boot_esp:
   BootDefault(ImageHandle, SystemTable);
