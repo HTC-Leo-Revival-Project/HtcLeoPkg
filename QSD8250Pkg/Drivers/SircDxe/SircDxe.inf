@@ -1,0 +1,40 @@
+##
+#  Secondary interrupt controller (SIRC) driver.
+#
+#  Copyright (c) 2026
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SircDxe
+  FILE_GUID                      = 3F9B6D24-8C51-4A7E-9D0B-2E4A7C1B8F60
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = SircDxeInitialize
+
+[Sources]
+  SircDxe.c
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdePkg/MdePkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  IoLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gHardwareInterruptProtocolGuid    ## CONSUMES
+  gHtcLeoSircProtocolGuid           ## PRODUCES
+
+[Depex]
+  gHardwareInterruptProtocolGuid

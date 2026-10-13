@@ -10,14 +10,15 @@
  *
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 /* bufferedReadWrite - read from input file, write on output file */
-int bufferedReadWrite(FILE *input, FILE *output, unsigned long length)
+int32_t bufferedReadWrite(FILE *input, FILE *output, uint32_t length)
 {
 	unsigned char data[2048];
-	unsigned long nread;
+	uint32_t nread;
 
 	while (length > 0) {
 		nread = length;

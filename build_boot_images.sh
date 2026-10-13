@@ -1,30 +1,49 @@
-#!/bin/bash
-if [ $1 == 'Leo' ]; then
-    cat BootShim/BootShim.bin workspace/Build/HtcLeo/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/Leo/bootpayload.bin
+#!/usr/bin/bash
 
-    ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/Leo/bootpayload.bin --base 0x11800000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=leo" -o ImageResources/Leo/uefi.img
+device="${1}"
+devicelower="$(tr [:upper:] [:lower:] <<< "${device}")"
 
-    # NBH creation
-    if [ ! -f ImageResources/Leo/nbgen ]; then
-        gcc -std=c99 ImageResources/Leo/nbgen.c -o ImageResources/Leo/nbgen
-    fi
-    # We're using a prebuild yang binary for now, since the compiled version doesn't seem to produce a valid NBH for Leo
-    if [ ! -f ImageResources/Leo/yang ]; then
-        gcc ImageResources/Leo/yang/nbh.c ImageResources/Leo/yang/nbhextract.c ImageResources/Leo/yang/yang.c -o ImageResources/Leo/yangbin
-    fi
+kernelbase=0x20000000
 
-    cd ImageResources/Leo/
-    ./nbgen os.nb
-    ./yang -F LEOIMG.nbh -f logo.nb,os.nb -t 0x600,0x400 -s 64 -d PB8110000 -c 11111111 -v EDK2 -l WWE
-    cd ../../
-elif [ $1 == 'Schubert' ]; then
-    cat BootShim/BootShim.bin workspace/Build/Htc$1/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/$1/bootpayload.bin
+mkdir -p "ImageResources/${device}"
 
-    ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/$1/bootpayload.bin --base 0x20000000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=schubert" -o ImageResources/$1/uefi.img
-elif [ $1 == 'Passion' ]; then
-    cat BootShim/BootShim.bin workspace/Build/Htc$1/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd >>ImageResources/$1/bootpayload.bin
+cat "BootShim/BootShim.bin" "workspace/Build/Htc${device}/DEBUG_CLANGDWARF/FV/QSD8250_UEFI.fd" > "ImageResources/${device}/bootpayload.bin"
 
-   ./ImageResources/mkbootimg/mkbootimg.py --kernel ImageResources/$1/bootpayload.bin --ramdisk ImageResources/$1/ramdisk --base 0x20000000 --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=passion" -o ImageResources/$1/uefi.img
-else
-    echo "Bootimages: Invalid platform"
+case "${device}" in
+    Leo)
+        kernelbase=0x11800000
+
+        cd ImageResources/Leo/
+        ./nbgen os.nb
+        if [ $? -ne 0 ]
+        then
+            echo "Failed to build os.nb for ${device}" 1>&2
+            exit 1
+        fi
+        ./yang -F LEOIMG.nbh -f logo.nb,os.nb -t 0x600,0x400 -s 64 -d PB8110000 -c 11111111 -v EDK2 -l WWE
+        if [ $? -ne 0 ]
+        then
+            echo "Failed to build LEOIMG.nbh" 1>&2
+            exit 1
+        fi
+        cd ../../
+        ;;
+    Passion|Schubert)
+        ;;
+    *)
+        echo "Bootimages: Invalid platform: ${device}" 1>&2
+        exit 1
+        ;;
+esac
+
+ramdisk="$(mktemp)"
+printf "\0" > "${ramdisk}"
+./ImageResources/mkbootimg/mkbootimg.py --kernel "ImageResources/${device}/bootpayload.bin" --ramdisk "${ramdisk}" --base "${kernelbase}" --kernel_offset 0x00008000 --header_version 0 --cmdline "androidboot.hardware=${devicelower}" -o "ImageResources/${device}/uefi.img"
+ret=$?
+if [ ${ret} -ne 0 ]
+then
+    echo "Failed to build uefi.img for ${device}" 1>&2
+    exit 1
 fi
+rm -f "${ramdisk}"
+exit ${ret}

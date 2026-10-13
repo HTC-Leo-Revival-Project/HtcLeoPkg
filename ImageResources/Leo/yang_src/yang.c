@@ -11,6 +11,7 @@
  *
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,12 +42,12 @@ void help_show_message()
 #endif
 }
 
-int main(int argc, char **argv)
+int32_t main(int32_t argc, char **argv)
 {
-	int c,i;
-	int totalnbfiles;
-	int totaltypes;
-	int SignMaxChunkSize;
+	int32_t c,i;
+	int32_t totalnbfiles;
+	int32_t totaltypes;
+	int32_t SignMaxChunkSize;
 
 	char *filename;
 	char *types;
@@ -61,14 +62,14 @@ int main(int argc, char **argv)
 	FILE *dbh;
 	FILE *nb;
 
-	unsigned long offset;
-	unsigned long totalsize;
-	unsigned long blockLen;
-	unsigned long sectionlen;
-	unsigned long signLen;
-	unsigned long totalwrite;
-	unsigned long lps;
-	unsigned long magicHeader[]={'H','T','C','I','M','A','G','E'};
+	uint32_t offset;
+	uint32_t totalsize;
+	uint32_t blockLen;
+	uint32_t sectionlen;
+	uint32_t signLen;
+	uint32_t totalwrite;
+	uint32_t lps;
+	uint32_t magicHeader[]={'H','T','C','I','M','A','G','E'};
 
 	unsigned char signature[5000];
 	unsigned char flag;

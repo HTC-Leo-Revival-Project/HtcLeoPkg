@@ -10,15 +10,18 @@ IsValid=0
 while getopts d: flag
 do
     case "${flag}" in
-        d) device=${OPTARG};;
+        d)
+			device=${OPTARG}
+			;;
     esac
 done
 
-function _check_args(){
+function _check_args() {
 	local DEVICE="${1}"
 	for Name in "${AvailablePlatforms[@]}"
 	do
-		if [[ $DEVICE == "$Name" ]]; then
+		if [ "${DEVICE}" == "${Name}" ]
+		then
 			IsValid=1
 			break;
 		fi
@@ -27,103 +30,130 @@ function _check_args(){
 
 function _clean() {
 	for PlatformName in "${AvailablePlatforms[@]}"
-		do
-			if [ $PlatformName != 'All' ]; then
-				if [ -f ImageResources/$DEVICE/bootpayload.bin ]; then
-					rm ImageResources/$DEVICE/bootpayload.bin
-				fi
-				if [ -f ImageResources/$DEVICE/os.nb ]; then
-					rm ImageResources/$DEVICE/os.nb
-				fi
-				if [ -f ImageResources/$DEVICE/*.img ]; then
-					rm ImageResources/$DEVICE/*.img
-				fi
-			fi
-		if [ -f BootShim/BootShim.bin ]; then
-			rm BootShim/BootShim.bin
-		fi
-		if [ -d workspace/Build ]; then
-			rm -r workspace/Build
+	do
+		if [ "${PlatformName}" != "All" ]; then
+			rm -f "ImageResources/${PlatformName}/bootpayload.bin"
+			rm -f "ImageResources/${PlatformName}/os.nb"
+			rm -f "ImageResources/${PlatformName}/uefi.img"
+			rm -f "ImageResources/${PlatformName}/"*.nbh
 		fi
 	done
+	rm -f "ImageResources/Leo/nbgen"
+	rm -f "ImageResources/Leo/yangbin"
+	rm -f "BootShim/BootShim."{bin,elf}
+	rm -rf "workspace/Build"
+	echo "Artifacts removed"
+}
+
+function _patch_edk() {
+	echo "Patching EDK2 Source"
+
+	PATCH1_APPLIED=0
+	PATCH2_APPLIED=0
+
+	file="../edk2/BaseTools/Source/C/GenFw/Elf32Convert.c"
+	# Check if R_ARM_PC13 already exists
+	if ! grep -q "case R_ARM_PC13:" "${file}"
+	then
+		# Insert after R_ARM_REL32
+		sed -i '/case R_ARM_REL32:/a\        case R_ARM_PC13:' "${file}"
+		echo "Inserted 'case R_ARM_PC13:' after 'case R_ARM_REL32:'."
+		PATCH1_APPLIED=1
+	else
+		echo "'case R_ARM_PC13:' already exists. No changes made."
+	fi
+
+
+	file="../edk2/MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/UnicodeCollationEng.c"
+	# Use sed to replace only if the "Status;" version exists
+	if grep -q "EFI_STATUS  Status;" "${file}"
+	then
+		sed -i 's/EFI_STATUS  Status;/EFI_STATUS  Status = EFI_SUCCESS;/' "${file}"
+		echo "Replaced 'EFI_STATUS  Status;' with 'EFI_STATUS  Status = EFI_SUCCESS;'"
+		PATCH2_APPLIED=1
+	else
+		echo "Pattern not found, no changes made."
+	fi
+
+	if [ ${PATCH1_APPLIED} -eq 1 ] && [ ${PATCH2_APPLIED} -eq 1 ]
+	then
+		echo "Both patches applied successfully."
+	fi
 }
 
 # based on https://github.com/edk2-porting/edk2-msm/blob/master/build.sh#L47 
-function _build(){
+function _build() {
 	local DEVICE="${1}"
 	shift
+
+	# NBH creation
+	if [ ! -f ImageResources/Leo/nbgen ]; then
+		gcc -std=c99 ImageResources/Leo/nbgen.c -o ImageResources/Leo/nbgen
+		if [ $? -ne 0 ]
+		then
+			echo "Failed to build nbgen" 1>&2
+			return 1
+		fi
+	fi
+	# We're using a prebuild yang binary for now, since the compiled version doesn't seem to produce a valid NBH for Leo
+	if [ ! -f ImageResources/Leo/yang ]; then
+		gcc ImageResources/Leo/yang_src/nbh.c ImageResources/Leo/yang_src/nbhextract.c ImageResources/Leo/yang_src/yang.c -o ImageResources/Leo/yang
+		if [ $? -ne 0 ]
+		then
+			echo "Failed to build yang" 1>&2
+			return 1
+		fi
+	fi
+
+	make -C BootShim UEFI_BASE=0x2C000000 UEFI_SIZE=0x00100000
+	if [ $? -ne 0 ]
+	then
+		echo "Failed to build BootShim" 1>&2
+		return 1
+	fi
+
 	source "../edk2/edksetup.sh"
 
 	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
 
-	# Clean artifacts if needed
-	_clean
-	echo "Artifacts removed"
-if [ $DEVICE == 'All' ]; then
-    echo "Building uefi for all platforms"
-	for PlatformName in "${AvailablePlatforms[@]}"
+	make clean -C ../edk2/BaseTools
+	make -C ../edk2/BaseTools -j$(nproc)
+
+	platforms=()
+
+	if [ "${DEVICE}" == 'All' ]
+	then
+		for PlatformName in "${AvailablePlatforms[@]}"
+		do
+			if [ "${PlatformName}" != 'All' ]
+			then
+				platforms+=("${PlatformName}")
+			fi
+		done
+	else
+		platforms+=("${DEVICE}")
+	fi
+
+	for PlatformName in "${platforms[@]}"
 	do
-		if [ $PlatformName != 'All' ]; then
-			# Build
-			build -n $NUM_CPUS -a ARM -t CLANGDWARF -p Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc -b DEBUG
-			./build_boot_shim.sh
-			./build_boot_images.sh $PlatformName
-		fi
+		echo "Building uefi for ${PlatformName}"
+		build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc" -b DEBUG
+
+		./build_boot_images.sh "${PlatformName}"
 	done
-else
-
-	echo "Patching EDK2 Source"
-file="../edk2/BaseTools/Source/C/GenFw/Elf32Convert.c"
-
-PATCH1_APPLIED=0
-PATCH2_APPLIED=0
-
-# Check if R_ARM_PC13 already exists
-if ! grep -q "case R_ARM_PC13:" "$file"; then
- 	# Insert after R_ARM_REL32
-    sed -i '/case R_ARM_REL32:/a\        case R_ARM_PC13:' "$file"
-    echo "Inserted 'case R_ARM_PC13:' after 'case R_ARM_REL32:'."
-    PATCH1_APPLIED=1
-else
-    echo "'case R_ARM_PC13:' already exists. No changes made."
-fi
-
-
-file="../edk2/MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/UnicodeCollationEng.c"
-
-# Use sed to replace only if the "Status;" version exists
-if grep -q "EFI_STATUS  Status;" "$file"; then
-    sed -i 's/EFI_STATUS  Status;/EFI_STATUS  Status = EFI_SUCCESS;/' "$file"
-    echo "Replaced 'EFI_STATUS  Status;' with 'EFI_STATUS  Status = EFI_SUCCESS;'"
-    PATCH2_APPLIED=1
-else
-    echo "Pattern not found, no changes made."
-fi
-
-if [[ $PATCH1_APPLIED -eq 1 && $PATCH2_APPLIED -eq 1 ]]; then
-    echo "Both patches applied. Rebuilding BaseTools..."
-    make clean -C ../edk2/BaseTools
-    make -C ../edk2/BaseTools -j$(nproc)
-else
-    echo "Not all patches were applied. Skipping BaseTools rebuild."
-fi
-
-    echo "Building uefi for $DEVICE"
-	build -n $NUM_CPUS -a ARM -t CLANGDWARF -p Platforms/Htc${DEVICE}/Htc${DEVICE}Pkg.dsc -b DEBUG
-
-	./build_boot_shim.sh
-	./build_boot_images.sh $DEVICE
-fi
 }
 
-_check_args "$device"
-if [ $IsValid == 1 ]; then
-	_build "$device"
+_check_args "${device}"
+if [ $IsValid == 1 ]
+then
+	_clean
+	_patch_edk
+	_build "${device}"
 else
 	echo "Build: Invalid platform"
 	echo "Available targets: "
 	for Name in "${AvailablePlatforms[@]}"
 	do
-		echo " - "$Name
+		echo " - ${Name}"
 	done
 fi

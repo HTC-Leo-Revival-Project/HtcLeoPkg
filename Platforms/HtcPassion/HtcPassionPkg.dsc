@@ -27,7 +27,7 @@
   FLASH_DEFINITION               = Platforms/$(PLATFORM_NAME)/$(PLATFORM_NAME)Pkg.fdf
 
   DEFINE USE_UART_FOR_SERIAL_OUTPUT = 1
-
+  DEFINE USE_SCREEN_FOR_SERIAL_OUTPUT = 0
 !include QSD8250Pkg/CommonDsc.dsc.inc
 
 [BuildOptions.common]

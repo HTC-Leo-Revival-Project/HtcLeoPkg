@@ -330,7 +330,7 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
     CHAR16 KernelPath[256];
     CHAR16 RamdiskPath[256];
 
-    const char *cmdline = "androidboot.selinux=permissive androidboot.configfs=false";
+    const char *cmdline = "";// = "androidboot.hardware=htcleo androidboot.selinux=permissive androidboot.configfs=false";
     
     CHAR8 *AllocatedCmdline = NULL;
     UINTN CmdlineSize;

@@ -1,6 +1,7 @@
 BootShim/*.bin
 BootShim/*.elf
 ImageResources/*/nbgen
+ImageResources/*/yang
 ImageResources/*/yangbin
 ImageResources/*/*.nbh
 ImageResources/*/os.nb
