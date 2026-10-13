@@ -76,7 +76,7 @@ BootImage(
 	EFI_STATUS Status;
 	void (*Entry)(unsigned,unsigned,unsigned*) = Kernel;
 
-	Print(L"booting image @ %p\n", Kernel);
+	DEBUG ((EFI_D_ERROR, "booting image @ %p\n", Kernel));
 
     CallExitBS(ImageHandle, SystemTable);
 
@@ -176,11 +176,11 @@ BootLinux(
 	/* END */
 	*ptr++ = 0;
 	*ptr++ = 0;
-	Print(L"booting linux @ %p, ramdisk @ %p (%d)\n",kernel, ramdisk, ramdisk_size);
+	DEBUG ((EFI_D_ERROR, "booting linux @ %p, ramdisk @ %p (%d)\n",kernel, ramdisk, ramdisk_size));
 	    if (cmdline) {
         CHAR16 CmdlineUnicode[256];
         AsciiStrToUnicodeStr(cmdline, CmdlineUnicode);
-        Print(L"cmdline: %s\n", CmdlineUnicode);
+        DEBUG ((EFI_D_ERROR, "cmdline: %s\n", CmdlineUnicode));
     }
 
     CallExitBS(ImageHandle, SystemTable);
@@ -223,7 +223,7 @@ LoadFileFromSDCard(
                 &Handles
              );
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to locate handles for SimpleFileSystem: %r\n", Status);
+        DEBUG ((EFI_D_ERROR, "Failed to locate handles for SimpleFileSystem: %r\n", Status));
         return Status;
     }
 
@@ -234,14 +234,14 @@ LoadFileFromSDCard(
                 (VOID **)&SimpleFileSystem
              );
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to handle SimpleFileSystem protocol: %r\n", Status);
+        DEBUG ((EFI_D_ERROR, "Failed to handle SimpleFileSystem protocol: %r\n", Status));
         return Status;
     }
 
     // Open the root directory of the SD card
     Status = SimpleFileSystem->OpenVolume(SimpleFileSystem, &Root);
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to open volume: %r\n", Status);
+        DEBUG ((EFI_D_ERROR, "Failed to open volume: %r\n", Status));
         return Status;
     }
 
@@ -254,7 +254,7 @@ LoadFileFromSDCard(
                 0
              );
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to open kernel file %s: %r\n", KernelFileName, Status);
+        DEBUG ((EFI_D_ERROR, "Failed to open kernel file %s: %r\n", KernelFileName, Status));
         return Status;
     }
 
@@ -268,13 +268,13 @@ LoadFileFromSDCard(
                 NULL
              );
     if (Status != EFI_BUFFER_TOO_SMALL) {
-        Print(L"Failed to get file info size: %r\n", Status);
+        DEBUG ((EFI_D_ERROR, "Failed to get file info size: %r\n", Status));
         return Status;
     }
 
     FileInfo = AllocatePool(FileInfoSize);
     if (FileInfo == NULL) {
-        Print(L"Failed to allocate memory for file info\n");
+        DEBUG ((EFI_D_ERROR, "Failed to allocate memory for file info\n"));
         return EFI_OUT_OF_RESOURCES;
     }
 
@@ -285,7 +285,7 @@ LoadFileFromSDCard(
                 FileInfo
              );
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to get file info: %r\n", Status);
+        DEBUG ((EFI_D_ERROR, "Failed to get file info: %r\n", Status));
         FreePool(FileInfo);
         return Status;
     }
@@ -294,7 +294,7 @@ LoadFileFromSDCard(
     BufferSize = (UINTN)FileInfo->FileSize;
     Buffer = LoadAddress; // Use the specified LoadAddress
     if (Buffer == NULL) {
-        Print(L"Failed to allocate memory at load address\n");
+        DEBUG ((EFI_D_ERROR, "Failed to allocate memory at load address\n"));
         FreePool(FileInfo);
         return EFI_OUT_OF_RESOURCES;
     }
@@ -306,7 +306,7 @@ LoadFileFromSDCard(
                 Buffer
              );
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to read kernel file: %r\n", Status);
+        DEBUG ((EFI_D_ERROR, "Failed to read kernel file: %r\n", Status));
         FreePool(FileInfo);
         return Status;
     }
@@ -352,9 +352,9 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
 
     Status = LoadFileFromSDCard(ImageHandle, SystemTable, KernelPath, KernelLoadAddress, &KernelBuffer, &KernelSize);
     if (EFI_ERROR(Status)) {
-        Print(L"Failed to load kernel from path %s: %r\n", KernelPath, Status);
+        DEBUG ((EFI_D_ERROR, "Failed to load kernel from path %s: %r\n", KernelPath, Status));
     } else {
-        Print(L"Kernel loaded successfully from path %s at address %p. Size: %d bytes\n", KernelPath, KernelBuffer, KernelSize);
+        DEBUG ((EFI_D_ERROR, "Kernel loaded successfully from path %s at address %p. Size: %d bytes\n", KernelPath, KernelBuffer, KernelSize));
         
         /* Check if the image is a linux kernel 
          * source: https://github.com/ARM-software/u-boot/blob/master/arch/arm/lib/zimage.c
@@ -373,15 +373,15 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
         Status = LoadFileFromSDCard(ImageHandle, SystemTable, RamdiskPath, 
                                 RamdiskLoadAddress, &RamdiskBuffer, &RamdiskSize);
         if (EFI_ERROR(Status)) {
-            Print(L"Failed to load ramdisk from path %s: %r\n", RamdiskPath, Status);
+            DEBUG ((EFI_D_ERROR, "Failed to load ramdisk from path %s: %r\n", RamdiskPath, Status));
         } else {
-            Print(L"Ramdisk loaded successfully from path %s at address %p. Size: %d bytes\n", RamdiskPath, RamdiskLoadAddress, RamdiskSize);
+            DEBUG ((EFI_D_ERROR, "Ramdisk loaded successfully from path %s at address %p. Size: %d bytes\n", RamdiskPath, RamdiskLoadAddress, RamdiskSize));
         }
         // Allocate memory for cmdline
         CmdlineSize = AsciiStrLen(cmdline) + 1; // +1 for the null terminator
         Status = SystemTable->BootServices->AllocatePool(EfiLoaderData, CmdlineSize, (void **)&AllocatedCmdline);
         if (EFI_ERROR(Status)) {
-            Print(L"Failed to allocate memory for cmdline: %r\n", Status);
+            DEBUG ((EFI_D_ERROR, "Failed to allocate memory for cmdline: %r\n", Status));
         } else {
             // Copy cmdline to allocated memory
             AsciiStrCpyS(AllocatedCmdline, CmdlineSize, cmdline);
@@ -398,7 +398,7 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
         
         // Clean up the kernel buffer when no longer needed, but we should never reach here essentially halt the platform
         FreePool(KernelBuffer);
-        Print(L"Booting Linux Failed, unknown error occurred");
+        DEBUG ((EFI_D_ERROR, "Booting Linux Failed, unknown error occurred"));
         for (;;) ;
     }
 }
