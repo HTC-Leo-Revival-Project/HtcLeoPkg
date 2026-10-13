@@ -44,6 +44,7 @@
 #define MSM_MDP_BASE          0xAA200000
 #define MSM_CLK_CTL_SH2_BASE  0xABA01000
 #define MSM_VIC_BASE          0xAC000000
+#define MSM_SIRC_BASE         0xAC200000
 #define MSM_CSR_BASE          0xAC100000
 #define MSM_GPT_BASE          0xAC100000
 #define A11S_CLK_CNTL         0xAC100100

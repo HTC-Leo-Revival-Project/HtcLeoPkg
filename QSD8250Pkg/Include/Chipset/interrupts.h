@@ -78,5 +78,7 @@
 #define SIRC_IRQ0_STATUS    SIRC_REG(0x001C)
 #define SIRC_IRQ1_STATUS    SIRC_REG(0x0020)
 #define SIRC_RAW_STATUS     SIRC_REG(0x0024)
+#define SIRC_INT_ACK        SIRC_REG(0x0028)  /* write 1 to clear latched bits */
+#define SIRC_SOFT_INT       SIRC_REG(0x002C)
 
 #endif
