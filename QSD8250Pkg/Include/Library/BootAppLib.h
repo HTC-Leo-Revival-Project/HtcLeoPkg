@@ -8,5 +8,6 @@
 #define HTCLEO_BOOTAPP_TITLE L"Htc Leo BootApp"
 #define SHELL_APP_TITLE L"UEFI Shell"
 #define TETRIS_APP_TITLE L"Tetris"
+#define FASTBOOT_APP_TITLE L"Fastboot"
 
 #endif
