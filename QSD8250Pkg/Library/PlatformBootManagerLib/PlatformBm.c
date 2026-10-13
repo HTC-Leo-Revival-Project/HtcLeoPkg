@@ -265,6 +265,7 @@ VOID PlatformRegisterOptionsAndKeys(VOID)
   INTN          ShellOption;
   INTN          SplashOption;
   INTN          TetrisOption;
+  INTN          FastbootOption;
   EFI_INPUT_KEY VolUpBtn;
   EFI_STATUS    Status;
 
@@ -286,6 +287,10 @@ VOID PlatformRegisterOptionsAndKeys(VOID)
   TetrisOption = PlatformRegisterFvBootOption(
       &gTetrisAppGuid, TETRIS_APP_TITLE, LOAD_OPTION_ACTIVE);
   ASSERT(TetrisOption != -1);
+
+  FastbootOption = PlatformRegisterFvBootOption(
+      &gFastbootAppGuid, FASTBOOT_APP_TITLE, LOAD_OPTION_ACTIVE);
+  ASSERT(FastbootOption != -1);
 }
 
 STATIC
