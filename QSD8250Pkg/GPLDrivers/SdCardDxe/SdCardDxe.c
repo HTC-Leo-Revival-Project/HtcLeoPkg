@@ -24,8 +24,9 @@
  * MA 02111-1307 USA
  */
  
+#include <Library/ArmLib.h>
+#include <Library/CacheMaintenanceLib.h>
 #include <Uefi.h>
-
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/DebugLib.h>

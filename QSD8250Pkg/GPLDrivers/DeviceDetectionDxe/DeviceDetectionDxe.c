@@ -68,7 +68,7 @@ CHAR8* GetStringFromMemory(UINT8* MemoryAddr, UINTN BufferSize, UINTN MemReadSiz
 
 VOID SPLDetectDevice(VOID) {
   CHAR8* SplVersion = GetStringFromMemory((UINT8*)SPL_ADRESS, 24, 9);
-  DEBUG((EFI_D_INFO | EFI_D_LOAD, "SPL version string: %a\n", SplVersion));
+  DEBUG((EFI_D_INFO | EFI_D_LOAD, "SPL version string: %s\n", SplVersion));
   mDevice.type = ParseSPLVersion(SplVersion);
   mDevice.cLK = FALSE;
   mDevice.nandBoot = TRUE;
@@ -80,7 +80,7 @@ VOID SPLDetectDevice(VOID) {
 VOID UpdateCID(VOID) {
     CHAR8* CidString = GetStringFromMemory((UINT8*)CID_ADDR, 24, 0x8);
 
-    DEBUG((EFI_D_INFO | EFI_D_LOAD, "CID string: %a\n", CidString));
+    DEBUG((EFI_D_INFO | EFI_D_LOAD, "CID string: %s\n", CidString));
 
     if (CidString != NULL) {
         if (mDevice.Cid != NULL) {
@@ -98,7 +98,7 @@ VOID UpdateCID(VOID) {
 VOID UpdateIMEI(VOID) {
   CHAR8* ImeiString = GetStringFromMemory((UINT8*)IMEI_ADDR, 64, (UINTN)0xF);
 
-  DEBUG((EFI_D_INFO | EFI_D_LOAD, "IMEI string: %a\n", ImeiString));
+  DEBUG((EFI_D_INFO | EFI_D_LOAD, "IMEI string: %s\n", ImeiString));
 
   if (ImeiString != NULL) {
     mDevice.Imei = AllocateCopyPool(AsciiStrSize(ImeiString), ImeiString);
