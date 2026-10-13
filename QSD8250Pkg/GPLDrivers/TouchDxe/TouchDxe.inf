@@ -1,0 +1,47 @@
+## @file
+#  HTC HD2 touchscreen driver.
+#
+#  Copyright (c) 2024
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = TouchDxe
+  FILE_GUID                      = 7C3D5A61-4E28-4B9F-9C10-5D2F8A6B4E73
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = TouchDxeInitialize
+
+[Sources]
+  TouchDxe.c
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  QSD8250Pkg/QSD8250Pkg.dec
+
+[LibraryClasses]
+  ArmLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  DevicePathLib
+  MemoryAllocationLib
+  IoLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiAbsolutePointerProtocolGuid                     ## CONSUMES
+  gEfiGraphicsOutputProtocolGuid                      ## CONSUMES
+  gEfiSimplePointerProtocolGuid                       ## PRODUCES
+  gHtcLeoI2CProtocolGuid                              ## CONSUMES
+  gHtcLeoSircProtocolGuid                             ## CONSUMES
+  gHtcLeoTouchProtocolGuid                            ## PRODUCES
+  gTlmmGpioProtocolGuid                               ## CONSUMES
+
+[Depex]
+  gHtcLeoI2CProtocolGuid AND gHtcLeoSircProtocolGuid AND gTlmmGpioProtocolGuid
