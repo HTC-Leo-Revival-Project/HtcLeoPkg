@@ -4,6 +4,7 @@
 #include <Library/PcdLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseLib.h>
+#include <Library/GptTimerLib.h>
 
 #define GPT_REG(off)        (((UINTN)PcdGet32(PcdMsmGptBase)) + (off))
 

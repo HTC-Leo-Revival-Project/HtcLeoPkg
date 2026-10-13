@@ -16,6 +16,8 @@
 #include <Library/TimerLib.h>
 #include <Library/PerformanceLib.h>
 #include <Library/FrameBufferConfigLib.h>
+#include <Library/GptTimerLib.h>
+#include <Library/EmuWorkaround.h>
 
 #include <Ppi/GuidedSectionExtraction.h>
 #include <Ppi/ArmMpCoreInfo.h>
@@ -83,6 +85,14 @@ PrePiMain (
 
   // Initialize the architecture specific bits
   ArchInitialize ();
+
+  // Start the AP generic timer (emulator builds only, see build.sh --emu).
+  // Nothing in this package enables the GPT on hardware, and on the emulator
+  // the boot loader leaves it stopped, so MicroSecondDelay()/NanoSecondDelay()
+  // would spin forever and the first driver that asks for a delay hangs.
+#if EMU_WORKAROUND
+  TimerEarlyInit ();
+#endif
 
   // Reconfigure the framebuffer based on PCD
   ReconfigFb(FixedPcdGet32(PcdMipiFrameBufferPixelBpp));
@@ -184,7 +194,11 @@ CEntryPoint (
   ArmEnableInstructionCache ();
 
   // Wait the Primary core has defined the address of the Global Variable region (event: ARM_CPU_EVENT_DEFAULT)
-  ArmCallWFE ();
+  // Multicore startup barrier: nothing raises the event on this uni-core
+  // build, so only non-master cores may wait (the master would hang here).
+  if (MpId != 0) {
+    ArmCallWFE ();
+  }
 
   PrePiMain (UefiMemoryBase, StacksBase, StartTimeStamp);
 
