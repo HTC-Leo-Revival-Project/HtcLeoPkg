@@ -258,25 +258,12 @@ LoadFileFromSDCard(
         return Status;
     }
 
-    // Get the file size
-    EFI_FILE_INFO *FileInfo;
-    UINTN FileInfoSize = sizeof(EFI_FILE_INFO);
-    Status = KernelFile->GetInfo(
-                KernelFile,
-                &gEfiFileInfoGuid,
-                &FileInfoSize,
-                NULL
-             );
-    if (Status != EFI_BUFFER_TOO_SMALL) {
-        DEBUG ((EFI_D_ERROR, "Failed to get file info size: %r\n", Status));
-        return Status;
-    }
+    EFI_FILE_INFO  SmallInfo;
+    EFI_FILE_INFO  *FileInfo = &SmallInfo;
+    UINTN          FileInfoSize = sizeof(SmallInfo);
 
-    FileInfo = AllocatePool(FileInfoSize);
-    if (FileInfo == NULL) {
-        DEBUG ((EFI_D_ERROR, "Failed to allocate memory for file info\n"));
-        return EFI_OUT_OF_RESOURCES;
-    }
+    *KernelBuffer = NULL;
+    *KernelSize = 0;
 
     Status = KernelFile->GetInfo(
                 KernelFile,
@@ -284,11 +271,36 @@ LoadFileFromSDCard(
                 &FileInfoSize,
                 FileInfo
              );
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+        FileInfo = AllocatePool(FileInfoSize);
+        if (FileInfo == NULL) {
+            DEBUG ((EFI_D_ERROR, "Failed to allocate memory for file info\n"));
+            return EFI_OUT_OF_RESOURCES;
+        }
+
+        Status = KernelFile->GetInfo(
+                    KernelFile,
+                    &gEfiFileInfoGuid,
+                    &FileInfoSize,
+                    FileInfo
+                 );
+    }
     if (EFI_ERROR(Status)) {
         DEBUG ((EFI_D_ERROR, "Failed to get file info: %r\n", Status));
-        FreePool(FileInfo);
+        if (FileInfo != &SmallInfo) {
+            FreePool(FileInfo);
+        }
         return Status;
     }
+
+    DEBUG ((
+      EFI_D_ERROR,
+      "LoadFileFromSDCard: len %u chars %04x %04x %04x %04x, size %lu, info size %lu\n",
+      StrLen (KernelFileName),
+      KernelFileName[0], KernelFileName[1], KernelFileName[2], KernelFileName[3],
+      (UINT64) FileInfo->FileSize,
+      (UINT64) FileInfoSize
+      ));
 
     // Allocate buffer for the kernel at the specified load address
     BufferSize = (UINTN)FileInfo->FileSize;
@@ -312,13 +324,245 @@ LoadFileFromSDCard(
     }
 
     // Clean up and return the buffer
-    FreePool(FileInfo);
+    if (FileInfo != &SmallInfo) {
+        FreePool(FileInfo);
+    }
     KernelFile->Close(KernelFile);
 
     *KernelBuffer = Buffer;
     *KernelSize = BufferSize;
 
     return EFI_SUCCESS;
+}
+
+EFI_STATUS
+OpenFileOnSdCard (
+  IN  EFI_HANDLE        ImageHandle,
+  IN  EFI_SYSTEM_TABLE  *SystemTable,
+  IN  CHAR16            *FileName,
+  OUT EFI_FILE_PROTOCOL  **File,
+  OUT EFI_FILE_PROTOCOL  **Root
+  )
+{
+    EFI_STATUS                     Status;
+    EFI_HANDLE                     *Handles;
+    UINTN                          HandleCount;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL  *SimpleFileSystem;
+
+    *File  = NULL;
+    *Root  = NULL;
+
+    Status = SystemTable->BootServices->LocateHandleBuffer (
+                        ByProtocol,
+                        &gEfiSimpleFileSystemProtocolGuid,
+                        NULL,
+                        &HandleCount,
+                        &Handles
+                        );
+    if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "No simple file system: %r\n", Status));
+        return Status;
+    }
+
+    Status = SystemTable->BootServices->HandleProtocol (
+                        Handles[0],
+                        &gEfiSimpleFileSystemProtocolGuid,
+                        (VOID **) &SimpleFileSystem
+                        );
+    if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "No file system protocol: %r\n", Status));
+        FreePool (Handles);
+        return Status;
+    }
+
+    Status = SimpleFileSystem->OpenVolume (SimpleFileSystem, Root);
+    if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "Cannot open the card volume: %r\n", Status));
+        FreePool (Handles);
+        return Status;
+    }
+
+    Status = (*Root)->Open (*Root, File, FileName, EFI_FILE_MODE_READ, 0);
+    if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "Cannot open %s: %r\n", FileName, Status));
+        (*Root)->Close (*Root);
+        *Root = NULL;
+    }
+
+    FreePool (Handles);
+
+    return Status;
+}
+
+EFI_STATUS
+ReadFileRange (
+  IN  EFI_FILE_PROTOCOL  *File,
+  IN  UINT64             Offset,
+  IN  UINTN              Size,
+  OUT VOID               *Dest
+  )
+{
+    EFI_STATUS  Status;
+    UINTN       Read = Size;
+
+    Status = File->SetPosition (File, Offset);
+    if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "Cannot seek to %lu: %r\n", Offset, Status));
+        return Status;
+    }
+
+    Status = File->Read (File, &Read, Dest);
+    if (EFI_ERROR (Status) || Read != Size) {
+        DEBUG ((
+            EFI_D_ERROR,
+            "Cannot read %lu bytes at %lu: %r (read %lu)\n",
+            Size, Offset, Status, Read
+            ));
+        return EFI_DEVICE_ERROR;
+    }
+
+    return EFI_SUCCESS;
+}
+
+EFI_STATUS
+BootAndroidBootImage (
+    IN EFI_HANDLE        ImageHandle,
+    IN EFI_SYSTEM_TABLE  *SystemTable,
+    IN CHAR16            *FileName
+    )
+{
+    EFI_STATUS           Status;
+    EFI_FILE_PROTOCOL    *File;
+    EFI_FILE_PROTOCOL    *Root;
+    BOOT_IMAGE_HEADER    HeaderData;
+    BOOT_IMAGE_HEADER    *Header = &HeaderData;
+    UINTN                PageSize;
+    UINTN                Offset;
+    CHAR8                Cmdline[1600];
+    UINTN                CmdlineLen;
+    VOID                 *Kernel;
+    VOID                 *Ramdisk;
+
+    Status = OpenFileOnSdCard (ImageHandle, SystemTable, FileName, &File, &Root);
+    if (EFI_ERROR (Status)) {
+        return EFI_NOT_FOUND;
+    }
+
+    Status = ReadFileRange (File, 0, sizeof (BOOT_IMAGE_HEADER), Header);
+    if (EFI_ERROR (Status)) {
+        File->Close (File);
+        Root->Close (Root);
+        return Status;
+    }
+
+    if ((Header->Magic0 != BOOT_MAGIC_0) || (Header->Magic1 != BOOT_MAGIC_1)) {
+        DEBUG ((
+            EFI_D_ERROR,
+            "%s is not a boot image (magic %08x %08x)\n",
+            FileName, Header->Magic0, Header->Magic1
+            ));
+        File->Close (File);
+        Root->Close (Root);
+        return EFI_NOT_FOUND;
+    }
+
+    DEBUG ((
+        EFI_D_ERROR,
+        "Boot image %s: kernel %u bytes at 0x%08x, ramdisk %u bytes at 0x%08x, tags 0x%08x\n",
+        FileName, Header->KernelSize, Header->KernelAddr,
+        Header->RamdiskSize, Header->RamdiskAddr, Header->TagsAddr
+        ));
+
+    PageSize = (Header->PageSize != 0) ? Header->PageSize : 2048;
+    Kernel   = (VOID *) (UINTN) Header->KernelAddr;
+    Ramdisk  = (VOID *) (UINTN) Header->RamdiskAddr;
+
+    //
+    // Kernel first, then the ramdisk: both are page aligned in the file.
+    //
+    Offset = (sizeof (BOOT_IMAGE_HEADER) + PageSize - 1) & ~(PageSize - 1);
+    Status = ReadFileRange (File, Offset, Header->KernelSize, Kernel);
+    if (EFI_ERROR (Status)) {
+        File->Close (File);
+        Root->Close (Root);
+        return Status;
+    }
+
+    Offset = (Offset + Header->KernelSize + PageSize - 1) & ~(PageSize - 1);
+    Status = ReadFileRange (File, Offset, Header->RamdiskSize, Ramdisk);
+    if (EFI_ERROR (Status)) {
+        File->Close (File);
+        Root->Close (Root);
+        return Status;
+    }
+
+    File->Close (File);
+    Root->Close (Root);
+
+    Header->Cmdline[sizeof (Header->Cmdline) - 1] = 0;
+    if (Header->HeaderVersion > 0) {
+        Header->ExtraCmdline[sizeof (Header->ExtraCmdline) - 1] = 0;
+        CmdlineLen = AsciiStrLen (Header->Cmdline);
+        if ((CmdlineLen > 0) && (Header->Cmdline[CmdlineLen - 1] != ' ')) {
+            Header->Cmdline[CmdlineLen++] = ' ';
+            Header->Cmdline[CmdlineLen]   = 0;
+        }
+        AsciiStrCatS (Cmdline, sizeof (Cmdline), Header->Cmdline);
+        AsciiStrCatS (Cmdline, sizeof (Cmdline), Header->ExtraCmdline);
+    } else {
+        AsciiStrCpyS (Cmdline, sizeof (Cmdline), Header->Cmdline);
+    }
+
+    DEBUG ((
+        EFI_D_ERROR,
+        "Boot image command line: %a\n",
+        Cmdline
+        ));
+
+    BootLinux (
+        ImageHandle,
+        SystemTable,
+        Kernel,
+        (UINTN *) (UINTN) Header->TagsAddr,
+        Cmdline,
+        MachType,
+        Ramdisk,
+        Header->RamdiskSize
+        );
+
+    return EFI_SUCCESS;
+}
+
+static
+VOID
+BuildSdPath (
+  OUT CHAR16  *Buffer,
+  IN  UINTN   BufferSize,
+  IN  CHAR16  *FileName
+  )
+{
+  CHAR16  Dir[128];
+  UINTN   Len = 0;
+
+  if (!FallBack && SelectedDir != NULL) {
+    while (SelectedDir[Len] != L'\0' && Len < ARRAY_SIZE (Dir) - 1) {
+      Dir[Len] = SelectedDir[Len];
+      Len++;
+    }
+  }
+  Dir[Len] = L'\0';
+
+  while (Len > 0 && (Dir[Len - 1] == L'\\' || Dir[Len - 1] == L'/')) {
+    Dir[--Len] = L'\0';
+  }
+
+  if (Len == 0) {
+    UnicodeSPrint (Buffer, BufferSize, L"\\%s", FileName);
+  } else {
+    UnicodeSPrint (Buffer, BufferSize, L"\\%s\\%s", Dir, FileName);
+  }
+
+  DEBUG ((EFI_D_ERROR, "BuildSdPath: %s\n", Buffer));
 }
 
 void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
@@ -338,15 +582,14 @@ void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTab
     Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
     ASSERT_EFI_ERROR(Status);
 
-    if (!FallBack) {
-        // Build the paths based on SelectedDir
-        UnicodeSPrint(KernelPath, sizeof(KernelPath), L"\\%s\\zImage", SelectedDir);
-        UnicodeSPrint(RamdiskPath, sizeof(RamdiskPath), L"\\%s\\initrd.img", SelectedDir);
-    } else {
-        // Use default paths
-        StrCpyS(KernelPath, sizeof(KernelPath) / sizeof(CHAR16), L"\\zImage");
-        StrCpyS(RamdiskPath, sizeof(RamdiskPath) / sizeof(CHAR16), L"\\initrd.img");
+    BuildSdPath (KernelPath, sizeof (KernelPath), L"boot.img");
+    Status = BootAndroidBootImage (ImageHandle, SystemTable, KernelPath);
+    if (Status != EFI_NOT_FOUND) {
+        return;
     }
+
+    BuildSdPath (KernelPath, sizeof (KernelPath), L"zImage");
+    BuildSdPath (RamdiskPath, sizeof (RamdiskPath), L"initrd.img");
     // Print the path that was generated
     DEBUG((EFI_D_INFO, "KernelDir is %s\n", KernelPath, Status));
 

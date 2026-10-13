@@ -18,13 +18,14 @@ FillMenu()
 {
   UINTN Index = 0;
   MenuOptions[Index++] = (MenuEntry){L"Boot default", TRUE, &BootDefault};
-  MenuOptions[Index++] = (MenuEntry){L"Boot Android", FALSE, &BootAndroidKernel}; //WIP AND NOT READY YET FOR PUBLIC
+  MenuOptions[Index++] = (MenuEntry){L"Boot Android", TRUE, &BootAndroidKernel};
   MenuOptions[Index++] = (MenuEntry){L"Fastboot", FALSE, &StartFastbootApp};
   MenuOptions[Index++] = (MenuEntry){L"Play Tetris", TRUE, &StartTetris};
   MenuOptions[Index++] = (MenuEntry){L"EFI Shell", TRUE, &StartShell},
   MenuOptions[Index++] = (MenuEntry){L"Dump DMESG to sdcard", TRUE, &DumpDmesg},
   MenuOptions[Index++] = (MenuEntry){L"Dump Memory to sdcard", TRUE, &DumpMemory2Sdcard},
   MenuOptions[Index++] = (MenuEntry){L"Reboot Menu", TRUE, &RebootMenu};
+  MenuOptions[Index++] = (MenuEntry){L"Settings", TRUE, &SettingsMenu};
   MenuOptions[Index++] = (MenuEntry){L"Exit", TRUE, &ExitMenu};
 }
 
@@ -162,6 +163,28 @@ VOID HandleKeyInput(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
         break;
     }
   }
+}
+
+VOID SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  SelectedIndex     = 0;
+  UINT8 Index = 0;
+  EFI_STATUS Status = EFI_SUCCESS;
+
+  Status = SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
+  ASSERT_EFI_ERROR(Status);
+
+  //
+  // Picking a directory is how the Booter is told where to find a boot.img, or
+  // a zImage and initrd.img pair, somewhere other than the card root.
+  //
+  MenuOptions[Index++] = (MenuEntry){L"Android boot directory", TRUE, &SelectAndroidDir};
+  MenuOptions[Index++] = (MenuEntry){L"Main menu", TRUE, &MainMenu};
+
+  // Fill disabled options
+  do {
+    MenuOptions[Index++] = (MenuEntry){L"", FALSE, &NullFunction};
+  } while (Index < MAX_OPTIONS_COUNT);
 }
 
 VOID RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)

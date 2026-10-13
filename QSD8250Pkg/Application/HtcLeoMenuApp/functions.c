@@ -1,5 +1,6 @@
 #include "menu.h"
 #include "BootApp.h"
+#include "Booter/AndroidSDDir.h"
 
 VOID RestoreInitialConsoleMode(
     IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *Cout,
@@ -55,6 +56,12 @@ VOID StartTetris(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 void StartFastbootApp(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
   StartApp(ImageHandle, SystemTable, FASTBOOT_APP_TITLE);
+}
+
+void SelectAndroidDir(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+  SetAndroidSdDir(ImageHandle, SystemTable);
+  SettingsMenu(ImageHandle, SystemTable);
 }
 
 VOID SetClkBoot(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {

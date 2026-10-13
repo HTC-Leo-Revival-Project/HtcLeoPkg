@@ -3,8 +3,8 @@
 
 //by default the selected dir is / (root of sdcard)
 
-CHAR16 *SelectedDir = L"\\";
-BOOLEAN FallBack = FALSE;
+CHAR16 *SelectedDir = NULL;
+BOOLEAN FallBack = TRUE;
 
 EFI_STATUS ListDirectories(EFI_HANDLE *HandleBuffer, UINTN HandleCount, CHAR16 ***DirList, UINTN *DirCount) {
     EFI_STATUS Status;
@@ -56,8 +56,19 @@ EFI_STATUS DisplayAndSelectDirectory(CHAR16 **DirList, UINTN DirCount, CHAR16 **
     UINTN MaxColumn, MaxRow, CentreColumn;
     EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *ConOut = gST->ConOut;
 
-    ConOut->QueryMode(ConOut, ConOut->Mode->Mode, &MaxColumn, &MaxRow);
+    MaxColumn = 80;
+    MaxRow    = 25;
+    if (ConOut->Mode != NULL) {
+        ConOut->QueryMode (ConOut, ConOut->Mode->Mode, &MaxColumn, &MaxRow);
+    }
     CentreColumn = MaxColumn / 2;
+
+    if (DirCount == 0) {
+        ConOut->ClearScreen (ConOut);
+        Print (L"No directories on the card\n");
+        DEBUG ((EFI_D_ERROR, "No directories on the card to choose from\n"));
+        return EFI_NOT_FOUND;
+    }
 
     while (TRUE) {
         ConOut->ClearScreen(ConOut);
@@ -204,7 +215,11 @@ void SetAndroidSdDir(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable
     Status = DisplayAndSelectDirectory(DirList, DirCount, &SelectedDir);
     if (EFI_ERROR(Status)) {
         DEBUG((EFI_D_ERROR, "Failed to select directory: %r\n", Status));
+        return;
     }
+
+    FallBack = FALSE;
+    DEBUG ((EFI_D_ERROR, "Android boot directory set to %s\n", SelectedDir));
 
     DEBUG((EFI_D_ERROR, "Failed to select directory: %r\n", Status));
     //we are done here return to main menu

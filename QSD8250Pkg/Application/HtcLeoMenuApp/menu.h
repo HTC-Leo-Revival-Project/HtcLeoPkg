@@ -38,6 +38,7 @@ typedef struct {
 #define PRINT_CENTRE_COLUMN 20
 
 void RebootMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+void SettingsMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 void DrawMenu();
 void MainMenu(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
 UINTN GetActiveMenuEntryLength();
