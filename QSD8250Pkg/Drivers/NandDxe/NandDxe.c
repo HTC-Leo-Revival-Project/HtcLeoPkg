@@ -505,6 +505,117 @@ NandReadPageRaw (
 }
 
 /**
+  Read one page with the ECC engine switched off.
+
+  Nothing but the NAND controller itself is involved: the flash buffer holds a
+  codeword exactly as the array stores it, [user data][parity][spare][marker],
+  so the user data is at the start of every codeword and the parity has to be
+  stepped over.  This is the fallback for when the ECC engine does not
+  cooperate, and the same layout the bad block marker check reads.
+
+  @retval 0   the page was read
+  @retval -1  the operation failed
+**/
+STATIC
+INTN
+NandReadPageNoEcc (
+  IN UINTN  Page,
+  IN VOID   *Addr,
+  IN VOID   *SpareAddr
+  )
+{
+  DMOV_S     *Cmd = flash_cmdlist;
+  UINTN      *Ptr = flash_ptrlist;
+  struct data_flash_io *Data = (struct data_flash_io *) (Ptr + 4);
+  UINTN      Buffer = (UINTN) Addr;
+  UINTN      CwPerPage = NandCwPerPage ();
+  UINTN      Index;
+
+  Data->cmd     = NAND_CMD_PAGE_READ;
+  Data->addr0   = Page << 16;
+  Data->addr1   = (Page >> 16) & 0xff;
+  Data->chipsel = 0 | 4;
+  Data->exec    = 1;
+  Data->cfg0    = (NAND_CFG0_RAW & ~(7 << 6)) | ((CwPerPage - 1) << 6);
+  Data->cfg1    = NAND_CFG1_RAW | (CFG1 & CFG1_WIDE_FLASH);
+  Data->ecc_cfg = 0;
+
+  //
+  // The command, the addresses and the chip select in one burst, then the
+  // configuration.  Both carry the NAND command CRCI.
+  //
+  Cmd[0].cmd = DST_CRCI_NAND_CMD | CMD_OCB;
+  Cmd[0].src = paddr (&Data->cmd);
+  Cmd[0].dst = NAND_FLASH_CMD;
+  Cmd[0].len = 16;
+  Cmd++;
+
+  Cmd[1].cmd = 0;
+  Cmd[1].src = paddr (&Data->cfg0);
+  Cmd[1].dst = NAND_DEV0_CFG0;
+  Cmd[1].len = 8;
+  Cmd++;
+  Cmd += 2;
+
+  for (Index = 0; Index < CwPerPage; Index++) {
+    //
+    // Kick this codeword, ...
+    //
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->exec);
+    Cmd->dst = NAND_EXEC_CMD;
+    Cmd->len = 4;
+    Cmd++;
+
+    //
+    // ... block on the data being ready and pick up the status, ...
+    //
+    Cmd->cmd = SRC_CRCI_NAND_DATA;
+    Cmd->src = NAND_FLASH_STATUS;
+    Cmd->dst = paddr (&Data->result[Index]);
+    Cmd->len = 8;
+    Cmd++;
+
+    //
+    // ... then take the 512 user bytes out of the front of the codeword and the
+    // four spare bytes from behind the parity.
+    //
+    Cmd->cmd = 0;
+    Cmd->src = NAND_FLASH_BUFFER;
+    Cmd->dst = Buffer + Index * 512;
+    Cmd->len = 512;
+    Cmd++;
+
+    if (SpareAddr != NULL) {
+      Cmd->cmd = 0;
+      Cmd->src = NAND_FLASH_BUFFER + 512 + 10;
+      Cmd->dst = (UINTN) SpareAddr + Index * 4;
+      Cmd->len = 4;
+      Cmd++;
+    }
+  }
+
+  Cmd->cmd = CMD_OCU | CMD_LC;
+  Cmd->src = paddr (&Data->cmd);
+  Cmd->dst = NAND_FLASH_CMD;
+  Cmd->len = 4;
+
+  Ptr[0] = (paddr (flash_cmdlist) >> 3) | CMD_PTR_LP;
+
+  if (DmovExecCmdPtr (DMOV_NAND_CHAN, Ptr) != 0) {
+    return -1;
+  }
+
+  for (Index = 0; Index < CwPerPage; Index++) {
+    if (Data->result[Index].flash_status & 0x110) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+/**
   Program one page.  The block has to be erased first.
 
   @retval 0   the page was programmed
@@ -798,6 +909,41 @@ NandRead (
 }
 
 /**
+  Read NumPages pages starting at StartPage with the ECC engine switched off.
+
+  Same as NandRead() but without the ECC engine, which is slower and not needed
+  for pages that are already error free (a partition written once and never
+  erased again, for instance).
+
+  @retval EFI_SUCCESS           The pages were read.
+  @retval EFI_INVALID_PARAMETER  The range is not inside the device.
+  @retval EFI_DEVICE_ERROR       The device reported an error.
+**/
+EFI_STATUS
+EFIAPI
+NandReadNoEcc (
+  IN  UINTN        StartPage,
+  IN  UINTN        NumPages,
+  OUT UINT8        *Buffer
+  )
+{
+  UINTN  Index;
+
+  if ((Buffer == NULL) || (NumPages == 0) ||
+      (StartPage + NumPages) > (nand_num_blocks * num_pages_per_blk)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  for (Index = 0; Index < NumPages; Index++) {
+    if (NandReadPageNoEcc (StartPage + Index, Buffer + Index * flash_pagesize, flash_spare) != 0) {
+      return EFI_DEVICE_ERROR;
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+
+/**
   Program NumPages pages starting at StartPage from Buffer.  The pages have to be
   erased (0xFF) before, as NAND can only clear bits.
 
@@ -972,18 +1118,31 @@ NandSelfTest (
 
   //
   // The first page of the first block tells us whether the chip answers at all.
+  // Try both read paths: with the ECC engine, which is the fast one, and without
+  // it, which only needs the NAND controller.
   //
-  SetMem (Buffer, flash_pagesize, 0);
   Status = NandRead (0, 1, Buffer);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "NandDxe: reading block 0 FAILED\n"));
-    goto Done;
+  DEBUG ((EFI_D_ERROR, "NandDxe: read block 0 (ECC): %a\n",
+          EFI_ERROR (Status) ? "failed" : "ok"));
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "NandDxe:   first bytes %02x %02x %02x %02x "
+                        "%02x %02x %02x %02x\n",
+            Buffer[0], Buffer[1], Buffer[2], Buffer[3],
+            Buffer[4], Buffer[5], Buffer[6], Buffer[7]));
   }
 
-  DEBUG ((EFI_D_ERROR, "NandDxe: read block 0, first bytes %02x %02x %02x %02x "
-                      "%02x %02x %02x %02x\n",
-          Buffer[0], Buffer[1], Buffer[2], Buffer[3],
-          Buffer[4], Buffer[5], Buffer[6], Buffer[7]));
+  Status = NandReadNoEcc (0, 1, Buffer);
+  DEBUG ((EFI_D_ERROR, "NandDxe: read block 0 (no ECC): %a\n",
+          EFI_ERROR (Status) ? "failed" : "ok"));
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "NandDxe:   first bytes %02x %02x %02x %02x "
+                        "%02x %02x %02x %02x\n",
+            Buffer[0], Buffer[1], Buffer[2], Buffer[3],
+            Buffer[4], Buffer[5], Buffer[6], Buffer[7]));
+  }
+
+  DEBUG ((EFI_D_ERROR, "NandDxe: block 0 %a\n",
+          NandIsBlockBad (0) ? "marked bad" : "good"));
 
   if (NAND_SELFTEST == 0) {
     DEBUG ((EFI_D_ERROR, "NandDxe: write test off (NAND_SELFTEST=1 to run it)\n"));
