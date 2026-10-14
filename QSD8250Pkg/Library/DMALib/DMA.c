@@ -43,9 +43,21 @@ INTN DmovExecCmdPtr(UINTN id, UINTN *ptr)
 
     MmioWrite32((UINTN)ch.cmd,(UINT32)(DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(paddr(ptr))));
 
+    /*
+     * Wait for a result of *this* list.
+     *
+     * The status register does not match its own header on this part: bit 1,
+     * documented as RSLT_VALID, stays clear while the FIFO holds results, and
+     * bit 0, documented as CMD_PTR_RDY, is the one that comes up together with
+     * the first result.  The count in the top three bits is the one thing both
+     * this part and the header agree on, and it is what tells us whether the
+     * list got anywhere: it counts up as lists pile up undrained.  (Waiting for
+     * the wrong bit also fills the FIFO, and a channel with a full result FIFO
+     * stops accepting commands, so everything after it hangs as well.)
+     */
     for (spins = 0; ; spins++) {
         n = MmioRead32((UINTN)ch.status);
-        if (n & DMOV_STATUS_RSLT_VALID) {
+        if (DMOV_STATUS_RSLT_COUNT(n)) {
             break;
         }
         if (spins >= DMOV_TIMEOUT_SPINS) {
