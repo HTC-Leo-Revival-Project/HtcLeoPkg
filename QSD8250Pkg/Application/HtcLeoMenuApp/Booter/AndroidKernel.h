@@ -1,3 +1,6 @@
+#ifndef __ANDROID_KERNEL_BOOTER_H__
+#define __ANDROID_KERNEL_BOOTER_H__
+
 #define BOOT_MAGIC_0   0x52444E41
 #define BOOT_MAGIC_1   0x2144494F
 
@@ -21,3 +24,5 @@ typedef struct {
 } BOOT_IMAGE_HEADER;
 
 void BootAndroidKernel(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable);
+
+#endif /* __ANDROID_KERNEL_BOOTER_H__ */

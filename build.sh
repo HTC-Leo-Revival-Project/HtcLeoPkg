@@ -155,8 +155,18 @@ function _build() {
 
 	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
 
-	make clean -C ../edk2/BaseTools
-	make -C ../edk2/BaseTools -j$(nproc)
+	# BaseTools only has to be built once.  Cleaning it on every run costs
+	# minutes and buys nothing, so only do that when asked for.
+	if [ -n "$REBUILD_BASETOOLS" ]
+	then
+		make clean -C ../edk2/BaseTools
+		make -C ../edk2/BaseTools -j$(nproc)
+	elif [ ! -x ../edk2/BaseTools/Source/C/bin/VfrCompile ] || [ ! -x ../edk2/BaseTools/Source/C/bin/GenFw ]
+	then
+		make -C ../edk2/BaseTools -j$(nproc)
+	else
+		echo "BaseTools present, skipping (REBUILD_BASETOOLS=1 to force)"
+	fi
 
 	platforms=()
 

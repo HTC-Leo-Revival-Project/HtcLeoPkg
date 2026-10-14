@@ -231,6 +231,823 @@ struct flash_info *flash_get_info(void)
 	return &flash_info;
 }
 
+//
+// The NAND controller is driven through the data mover, exactly like cLK does in
+// platform/msm_shared/nand.c: every codeword is kicked with one EXEC_CMD write and
+// the bytes come out of the FLASH_BUFFER window.  The sequences below are ported
+// from there.
+//
+struct data_flash_io {
+	unsigned cmd;
+	unsigned addr0;
+	unsigned addr1;
+	unsigned chipsel;
+	unsigned cfg0;
+	unsigned cfg1;
+	unsigned exec;
+	unsigned ecc_cfg;
+	unsigned ecc_cfg_save;
+	unsigned clrfstatus;
+	unsigned clrrstatus;
+	struct {
+		unsigned flash_status;
+		unsigned buffer_status;
+	} result[8];
+};
+
+STATIC UINTN
+NandCwPerPage (
+  VOID
+  )
+{
+  return flash_pagesize >> 9;
+}
+
+/**
+  Read the bad block marker of the block that Page lives in.  A block is bad when
+  the factory marker byte in the spare area of its first page is not 0xFF.
+
+  @retval 0   the block is good
+  @retval -1  the block is bad (or the read failed)
+**/
+STATIC
+INTN
+NandBlockIsBad (
+  IN UINTN  Page
+  )
+{
+  DMOV_S     *Cmd = flash_cmdlist;
+  UINTN      *Ptr = flash_ptrlist;
+  UINTN      *Data = Ptr + 4;
+  UINTN      CwPerPage = NandCwPerPage ();
+  UINT32     Marker = 0;
+  UINTN      Index;
+
+  //
+  // The marker always lives in the first page of a block.
+  //
+  Page &= ~num_pages_per_blk_mask;
+
+  Data[0] = NAND_CMD_PAGE_READ;
+  if (CFG1 & CFG1_WIDE_FLASH) {
+    Data[1] = (Page << 16) | ((528 * (CwPerPage - 1)) >> 1);
+  } else {
+    Data[1] = (Page << 16) | (528 * (CwPerPage - 1));
+  }
+  Data[2] = (Page >> 16) & 0xff;
+  Data[3] = 0 | 4;
+  Data[4] = NAND_CFG0_RAW & ~(7U << 6);
+  Data[5] = NAND_CFG1_RAW | (CFG1 & CFG1_WIDE_FLASH);
+  Data[6] = 1;
+  Data[7] = CLEAN_DATA_32;
+  Data[8] = CLEAN_DATA_32;
+
+  Cmd[0].cmd = DST_CRCI_NAND_CMD | CMD_OCB;
+  Cmd[0].src = paddr (&Data[0]);
+  Cmd[0].dst = NAND_FLASH_CMD;
+  Cmd[0].len = 16;
+
+  Cmd[1].cmd = 0;
+  Cmd[1].src = paddr (&Data[4]);
+  Cmd[1].dst = NAND_DEV0_CFG0;
+  Cmd[1].len = 8;
+
+  Cmd[2].cmd = 0;
+  Cmd[2].src = paddr (&Data[6]);
+  Cmd[2].dst = NAND_EXEC_CMD;
+  Cmd[2].len = 4;
+
+  Cmd[3].cmd = SRC_CRCI_NAND_DATA;
+  Cmd[3].src = NAND_FLASH_STATUS;
+  Cmd[3].dst = paddr (&Data[7]);
+  Cmd[3].len = 8;
+
+  Cmd[4].cmd = CMD_OCU | CMD_LC;
+  Cmd[4].src = NAND_FLASH_BUFFER + (flash_pagesize - (528 * (CwPerPage - 1)));
+  Cmd[4].dst = paddr (&Marker);
+  Cmd[4].len = 4;
+
+  Ptr[0] = (paddr (Cmd) >> 3) | CMD_PTR_LP;
+
+  DmovExecCmdPtr (DMOV_NAND_CHAN, Ptr);
+
+  //
+  // 0x110: operation error or MPU error.
+  //
+  if (Data[7] & 0x110) {
+    return -1;
+  }
+
+  //
+  // The marker is the first byte; on an x16 part there are two of them.
+  //
+  for (Index = 0; Index < ((flash_info.type == FLASH_16BIT_NAND_DEVICE) ? 2 : 1); Index++) {
+    if (((Marker >> (Index * 8)) & 0xff) != 0xff) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+/**
+  Read one page into Addr, its 16 spare bytes into SpareAddr.
+
+  @retval 0   the page was read
+  @retval -1  the operation or the ECC engine failed
+  @retval -2  the block containing the page is bad
+**/
+STATIC
+INTN
+NandReadPageRaw (
+  IN UINTN  Page,
+  IN VOID   *Addr,
+  IN VOID   *SpareAddr
+  )
+{
+  DMOV_S     *Cmd = flash_cmdlist;
+  UINTN      *Ptr = flash_ptrlist;
+  struct data_flash_io *Data = (struct data_flash_io *) (Ptr + 4);
+  UINTN      Buffer = (UINTN) Addr;
+  UINTN      CwPerPage = NandCwPerPage ();
+  UINTN      Index;
+
+  Index = NandBlockIsBad (Page);
+  if (Index != 0) {
+    return -2;
+  }
+
+  Data->cmd      = NAND_CMD_PAGE_READ_ECC;
+  Data->addr0    = Page << 16;
+  Data->addr1    = (Page >> 16) & 0xff;
+  Data->chipsel  = 0 | 4;
+  Data->exec     = 1;
+  Data->cfg0     = CFG0;
+  Data->cfg1     = CFG1;
+  Data->ecc_cfg  = 0x203;
+
+  //
+  // Save the current ECC configuration so we can put it back afterwards.
+  //
+  Cmd[0].cmd = CMD_OCB;
+  Cmd[0].src = NAND_EBI2_ECC_BUF_CFG;
+  Cmd[0].dst = paddr (&Data->ecc_cfg_save);
+  Cmd[0].len = 4;
+  Cmd++;
+
+  for (Index = 0; Index < CwPerPage; Index++) {
+    //
+    // Write the command (and, for the first codeword, the addresses and the
+    // chip select) in one burst.  The command has to be tagged with the NAND
+    // command CRCI so the mover waits for the flash to be ready.
+    //
+    Cmd->cmd = DST_CRCI_NAND_CMD;
+    Cmd->src = paddr (&Data->cmd);
+    Cmd->dst = NAND_FLASH_CMD;
+    Cmd->len = ((Index == 0) ? 16 : 4);
+    Cmd++;
+
+    if (Index == 0) {
+      //
+      // Block on the command being ready, then set the configuration.
+      //
+      Cmd->cmd = 0;
+      Cmd->src = paddr (&Data->cfg0);
+      Cmd->dst = NAND_DEV0_CFG0;
+      Cmd->len = 8;
+      Cmd++;
+
+      Cmd->cmd = 0;
+      Cmd->src = paddr (&Data->ecc_cfg);
+      Cmd->dst = NAND_EBI2_ECC_BUF_CFG;
+      Cmd->len = 4;
+      Cmd++;
+    }
+
+    //
+    // Kick the execute register, ...
+    //
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->exec);
+    Cmd->dst = NAND_EXEC_CMD;
+    Cmd->len = 4;
+    Cmd++;
+
+    //
+    // ... block on the data being ready and pick up the status, ...
+    //
+    Cmd->cmd = SRC_CRCI_NAND_DATA;
+    Cmd->src = NAND_FLASH_STATUS;
+    Cmd->dst = paddr (&Data->result[Index]);
+    Cmd->len = 8;
+    Cmd++;
+
+    //
+    // ... and copy the codeword out.  With the ECC engine on, the flash buffer
+    // holds the codeword's 512 user bytes followed by its 4 spare bytes (the
+    // parity has been consumed), so the user data is simply concatenated.
+    //
+    Cmd->cmd = 0;
+    Cmd->src = NAND_FLASH_BUFFER;
+    Cmd->dst = Buffer + Index * 512;
+    Cmd->len = 512;
+    Cmd++;
+
+    //
+    // The spare bytes of this codeword, four at a time.
+    //
+    if (SpareAddr != NULL) {
+      Cmd->cmd = 0;
+      Cmd->src = NAND_FLASH_BUFFER + 512;
+      Cmd->dst = (UINTN) SpareAddr + Index * 4;
+      Cmd->len = 4;
+      Cmd++;
+    }
+  }
+
+  //
+  // Put the ECC configuration back.
+  //
+  Cmd->cmd = CMD_OCU | CMD_LC;
+  Cmd->src = paddr (&Data->ecc_cfg_save);
+  Cmd->dst = NAND_EBI2_ECC_BUF_CFG;
+  Cmd->len = 4;
+
+  //
+  // The pointer list entry addresses the *start* of the command array, not the
+  // last command we happened to write.
+  //
+  Ptr[0] = (paddr (flash_cmdlist) >> 3) | CMD_PTR_LP;
+
+  DmovExecCmdPtr (DMOV_NAND_CHAN, Ptr);
+
+  for (Index = 0; Index < CwPerPage; Index++) {
+    if (Data->result[Index].flash_status & 0x110) {
+      DEBUG ((EFI_D_ERROR, "NandDxe: read page %d cw %d failed, status %08x\n",
+              Page, Index, Data->result[Index].flash_status));
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+/**
+  Program one page.  The block has to be erased first.
+
+  @retval 0   the page was programmed
+  @retval -1  the operation failed
+  @retval -2  the block containing the page is bad
+**/
+STATIC
+INTN
+NandWritePageRaw (
+  IN UINTN       Page,
+  IN CONST VOID  *Addr,
+  IN CONST VOID  *SpareAddr,
+  IN BOOLEAN     RawMode
+  )
+{
+  DMOV_S     *Cmd = flash_cmdlist;
+  UINTN      *Ptr = flash_ptrlist;
+  struct data_flash_io *Data = (struct data_flash_io *) (Ptr + 4);
+  UINTN      Buffer = (UINTN) Addr;
+  UINTN      Spare = (UINTN) SpareAddr;
+  UINTN      CwPerPage = NandCwPerPage ();
+  UINTN      Index;
+
+  Index = NandBlockIsBad (Page);
+  if (Index != 0) {
+    return -2;
+  }
+
+  Data->cmd         = NAND_CMD_PRG_PAGE;
+  Data->addr0       = Page << 16;
+  Data->addr1       = (Page >> 16) & 0xff;
+  Data->chipsel     = 0 | 4;
+  Data->clrfstatus  = 0x00000020;
+  Data->clrrstatus  = 0x000000C0;
+
+  if (!RawMode) {
+    Data->cfg0 = CFG0;
+    Data->cfg1 = CFG1;
+  } else {
+    Data->cfg0 = (NAND_CFG0_RAW & ~(7 << 6)) | ((CwPerPage - 1) << 6);
+    Data->cfg1 = NAND_CFG1_RAW | (CFG1 & CFG1_WIDE_FLASH);
+  }
+
+  Data->exec    = 1;
+  Data->ecc_cfg = 0x203;
+
+  //
+  // Save the current ECC configuration so we can put it back afterwards.
+  //
+  Cmd[0].cmd = CMD_OCB;
+  Cmd[0].src = NAND_EBI2_ECC_BUF_CFG;
+  Cmd[0].dst = paddr (&Data->ecc_cfg_save);
+  Cmd[0].len = 4;
+  Cmd++;
+
+  for (Index = 0; Index < CwPerPage; Index++) {
+    //
+    // Command, addresses and chip select.
+    //
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->cmd);
+    Cmd->dst = NAND_FLASH_CMD;
+    Cmd->len = 16;
+    Cmd++;
+
+    //
+    // The data to program.  With the ECC engine on the flash buffer takes the
+    // codeword's 512 user bytes and then its 4 spare bytes.
+    //
+    Cmd->cmd = 0;
+    Cmd->dst = NAND_FLASH_BUFFER;
+    if (RawMode) {
+      Cmd->src = Buffer + Index * 528;
+      Cmd->len = 528;
+    } else {
+      Cmd->src = Buffer + Index * 512;
+      Cmd->len = 512;
+    }
+    Cmd++;
+
+    //
+    // The spare bytes of this codeword.
+    //
+    if ((Spare != 0) && !RawMode) {
+      Cmd->cmd = 0;
+      Cmd->src = Spare + Index * 4;
+      Cmd->dst = NAND_FLASH_BUFFER + 512;
+      Cmd->len = 4;
+      Cmd++;
+    }
+
+    //
+    // Configuration.
+    //
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->cfg0);
+    Cmd->dst = NAND_DEV0_CFG0;
+    Cmd->len = 8;
+    Cmd++;
+
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->ecc_cfg);
+    Cmd->dst = NAND_EBI2_ECC_BUF_CFG;
+    Cmd->len = 4;
+    Cmd++;
+
+    //
+    // Go.
+    //
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->exec);
+    Cmd->dst = NAND_EXEC_CMD;
+    Cmd->len = 4;
+    Cmd++;
+
+    //
+    // Wait for the result, then clear the status registers.
+    //
+    Cmd->cmd = SRC_CRCI_NAND_DATA;
+    Cmd->src = NAND_FLASH_STATUS;
+    Cmd->dst = paddr (&Data->result[Index]);
+    Cmd->len = 8;
+    Cmd++;
+
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->clrfstatus);
+    Cmd->dst = NAND_FLASH_STATUS;
+    Cmd->len = 4;
+    Cmd++;
+
+    Cmd->cmd = 0;
+    Cmd->src = paddr (&Data->clrrstatus);
+    Cmd->dst = NAND_READ_STATUS;
+    Cmd->len = 4;
+    Cmd++;
+  }
+
+  //
+  // Put the ECC configuration back.
+  //
+  Cmd->cmd = CMD_OCU | CMD_LC;
+  Cmd->src = paddr (&Data->ecc_cfg_save);
+  Cmd->dst = NAND_EBI2_ECC_BUF_CFG;
+  Cmd->len = 4;
+
+  //
+  // The pointer list entry addresses the start of the command array.
+  //
+  Ptr[0] = (paddr (flash_cmdlist) >> 3) | CMD_PTR_LP;
+
+  DmovExecCmdPtr (DMOV_NAND_CHAN, Ptr);
+
+  for (Index = 0; Index < CwPerPage; Index++) {
+    if (Data->result[Index].flash_status & 0x110) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+/**
+  Erase the block that Page lives in.
+
+  @retval 0   the block was erased
+  @retval -1  the operation failed or the block is bad
+**/
+STATIC
+INTN
+NandEraseBlockRaw (
+  IN UINTN  Page
+  )
+{
+  DMOV_S     *Cmd = flash_cmdlist;
+  UINTN      *Ptr = flash_ptrlist;
+  UINTN      *Data = Ptr + 4;
+  INTN       Result;
+
+  //
+  // Erasing only works on block boundaries.
+  //
+  if (Page & num_pages_per_blk_mask) {
+    return -1;
+  }
+
+  Result = NandBlockIsBad (Page);
+  if (Result != 0) {
+    return -1;
+  }
+
+  Data[0] = NAND_CMD_BLOCK_ERASE;
+  Data[1] = Page;
+  Data[2] = 0;
+  Data[3] = 0 | 4;
+  Data[4] = 1;
+  Data[5] = 0xeeeeeeee;
+  Data[6] = CFG0 & (~(7 << 6));
+  Data[7] = CFG1;
+  Data[8] = 0x00000020;
+  Data[9] = 0x000000C0;
+
+  Cmd[0].cmd = DST_CRCI_NAND_CMD | CMD_OCB;
+  Cmd[0].src = paddr (&Data[0]);
+  Cmd[0].dst = NAND_FLASH_CMD;
+  Cmd[0].len = 16;
+
+  Cmd[1].cmd = 0;
+  Cmd[1].src = paddr (&Data[6]);
+  Cmd[1].dst = NAND_DEV0_CFG0;
+  Cmd[1].len = 8;
+
+  Cmd[2].cmd = 0;
+  Cmd[2].src = paddr (&Data[4]);
+  Cmd[2].dst = NAND_EXEC_CMD;
+  Cmd[2].len = 4;
+
+  Cmd[3].cmd = SRC_CRCI_NAND_DATA;
+  Cmd[3].src = NAND_FLASH_STATUS;
+  Cmd[3].dst = paddr (&Data[5]);
+  Cmd[3].len = 4;
+
+  Cmd[4].cmd = 0;
+  Cmd[4].src = paddr (&Data[8]);
+  Cmd[4].dst = NAND_FLASH_STATUS;
+  Cmd[4].len = 4;
+
+  Cmd[5].cmd = CMD_OCU | CMD_LC;
+  Cmd[5].src = paddr (&Data[9]);
+  Cmd[5].dst = NAND_READ_STATUS;
+  Cmd[5].len = 4;
+
+  Ptr[0] = (paddr (Cmd) >> 3) | CMD_PTR_LP;
+
+  DmovExecCmdPtr (DMOV_NAND_CHAN, Ptr);
+
+  //
+  // Operation error, MPU error, or the erase success bit was not set.
+  //
+  if (Data[5] & 0x110) {
+    return -1;
+  }
+  if (!(Data[5] & 0x80)) {
+    return -1;
+  }
+
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+  Read NumPages pages starting at StartPage into Buffer.
+
+  @param[in]  StartPage  First page to read.
+  @param[in]  NumPages   How many pages to read.
+  @param[out] Buffer     Receives PageSize * NumPages bytes.
+
+  @retval EFI_SUCCESS           The pages were read.
+  @retval EFI_INVALID_PARAMETER  The range is not inside the device.
+  @retval EFI_DEVICE_ERROR       The device reported an error.
+**/
+EFI_STATUS
+EFIAPI
+NandRead (
+  IN  UINTN        StartPage,
+  IN  UINTN        NumPages,
+  OUT UINT8        *Buffer
+  )
+{
+  UINTN  Index;
+
+  if ((Buffer == NULL) || (NumPages == 0) ||
+      (StartPage + NumPages) > (nand_num_blocks * num_pages_per_blk)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  for (Index = 0; Index < NumPages; Index++) {
+    switch (NandReadPageRaw (StartPage + Index, Buffer + Index * flash_pagesize, flash_spare)) {
+      case 0:
+        break;
+      case -2:
+        return EFI_DEVICE_ERROR;
+      default:
+        return EFI_DEVICE_ERROR;
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Program NumPages pages starting at StartPage from Buffer.  The pages have to be
+  erased (0xFF) before, as NAND can only clear bits.
+
+  The bad block marker lives in the user area (page byte 2000 on this part, one
+  byte wide, two on an x16 device), so it is never taken from the caller's data:
+  programming anything else there would mark the whole block as bad.
+
+  @retval EFI_SUCCESS           The pages were written.
+  @retval EFI_INVALID_PARAMETER  The range is not inside the device.
+  @retval EFI_DEVICE_ERROR       The device reported an error.
+**/
+EFI_STATUS
+EFIAPI
+NandWrite (
+  IN UINTN              StartPage,
+  IN UINTN              NumPages,
+  IN CONST UINT8        *Buffer
+  )
+{
+  UINT8  Spare[16];
+  UINT8  *Staging;
+  UINTN  Index;
+  UINTN  MarkerWidth;
+  UINTN  MarkerOffset;
+
+  if ((Buffer == NULL) || (NumPages == 0) ||
+      (StartPage + NumPages) > (nand_num_blocks * num_pages_per_blk)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  SetMem (Spare, sizeof (Spare), 0xff);
+
+  //
+  // Stage the page so the bad block marker can be kept erased.
+  //
+  Staging = (UINT8 *) AllocateAlignedPages (EFI_SIZE_TO_PAGES (flash_pagesize), 32);
+  if (Staging == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  MarkerWidth = (flash_info.type == FLASH_16BIT_NAND_DEVICE) ? 2 : 1;
+  MarkerOffset = ((NandCwPerPage () - 1) << 9) +
+                 (flash_pagesize - (528 * (NandCwPerPage () - 1)));
+
+  for (Index = 0; Index < NumPages; Index++) {
+    CopyMem (Staging, Buffer + Index * flash_pagesize, flash_pagesize);
+    SetMem (Staging + MarkerOffset, MarkerWidth, 0xff);
+
+    if (NandWritePageRaw (
+          StartPage + Index,
+          Staging,
+          Spare,
+          FALSE
+          ) != 0) {
+      FreeAlignedPages (Staging, EFI_SIZE_TO_PAGES (flash_pagesize));
+      return EFI_DEVICE_ERROR;
+    }
+  }
+
+  FreeAlignedPages (Staging, EFI_SIZE_TO_PAGES (flash_pagesize));
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Erase one block.
+
+  @param[in]  Block  Block index.
+
+  @retval EFI_SUCCESS     The block was erased.
+  @retval EFI_DEVICE_ERROR  The block could not be erased (or is bad).
+**/
+EFI_STATUS
+EFIAPI
+NandEraseBlock (
+  IN UINTN  Block
+  )
+{
+  if (Block >= nand_num_blocks) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  return (NandEraseBlockRaw (Block * num_pages_per_blk) == 0) ? EFI_SUCCESS : EFI_DEVICE_ERROR;
+}
+
+/**
+  Check whether a block is marked bad by the manufacturer.
+
+  @retval TRUE   the block is bad and must not be used
+  @retval FALSE  the block is good
+**/
+BOOLEAN
+EFIAPI
+NandIsBlockBad (
+  IN UINTN  Block
+  )
+{
+  if (Block >= nand_num_blocks) {
+    return TRUE;
+  }
+
+  return (NandBlockIsBad (Block * num_pages_per_blk) != 0);
+}
+
+//
+// Geometry, so callers do not have to reach into the driver.
+//
+UINTN
+EFIAPI
+NandGetPageSize (
+  VOID
+  )
+{
+  return flash_pagesize;
+}
+
+UINTN
+EFIAPI
+NandGetBlockSize (
+  VOID
+  )
+{
+  return flash_info.block_size;
+}
+
+UINTN
+EFIAPI
+NandGetNumBlocks (
+  VOID
+  )
+{
+  return nand_num_blocks;
+}
+
+UINTN
+EFIAPI
+NandGetPagesPerBlock (
+  VOID
+  )
+{
+  return num_pages_per_blk;
+}
+
+/**
+  Prove that the controller really talks to the flash: read a page, then erase,
+  program and read back a known pattern in the last block and erase it again so
+  the device is left the way we found it.
+**/
+STATIC
+VOID
+NandSelfTest (
+  VOID
+  )
+{
+  EFI_STATUS  Status;
+  UINT8       *Buffer;
+  UINTN       Index;
+  UINTN       ScratchBlock;
+  UINTN       ScratchPage;
+  UINTN       MarkerWidth;
+  UINTN       MarkerOffset;
+  BOOLEAN     Pass;
+
+  Buffer = (UINT8 *) AllocateAlignedPages (EFI_SIZE_TO_PAGES (flash_pagesize), 32);
+  if (Buffer == NULL) {
+    DEBUG ((EFI_D_ERROR, "NandDxe: self test skipped, out of memory\n"));
+    return;
+  }
+
+  //
+  // The first page of the first block tells us whether the chip answers at all.
+  //
+  Status = NandRead (0, 1, Buffer);
+  DEBUG ((EFI_D_ERROR, "NandDxe: read block 0: %a, first bytes %02x %02x %02x %02x\n",
+          (Status == EFI_SUCCESS) ? "ok" : "failed",
+          Buffer[0], Buffer[1], Buffer[2], Buffer[3]));
+
+  //
+  // The recovery payload sits in block 0x221 and is an Android boot image, so
+  // its first page has to start with "ANDROID!" when the data mover works.
+  //
+  Status = NandRead (0x221 * num_pages_per_blk, 1, Buffer);
+  Pass = (Status == EFI_SUCCESS) && (AsciiStrCmp ((CHAR8 *) Buffer, "ANDROID!") == 0);
+  DEBUG ((EFI_D_ERROR, "NandDxe: recovery block 0x221: %a (\"%a\")\n",
+          (Status == EFI_SUCCESS) ? "read" : "unreadable",
+          (Status == EFI_SUCCESS) ? (CHAR8 *) Buffer : ""));
+
+  if (nand_num_blocks < 2) {
+    goto Done;
+  }
+
+  //
+  // Erase, program and read back a pattern in the very last block.  It is unused
+  // (0xFF) on a stock ROM and we erase it again afterwards.
+  //
+  ScratchBlock = nand_num_blocks - 1;
+  ScratchPage  = ScratchBlock * num_pages_per_blk;
+
+  DEBUG ((EFI_D_ERROR, "NandDxe: self test in block %d (page %d)\n",
+          ScratchBlock, ScratchPage));
+
+  MarkerWidth  = (flash_info.type == FLASH_16BIT_NAND_DEVICE) ? 2 : 1;
+  MarkerOffset = ((NandCwPerPage () - 1) << 9) +
+                 (flash_pagesize - (528 * (NandCwPerPage () - 1)));
+
+  Status = NandEraseBlock (ScratchBlock);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "NandDxe: erase failed\n"));
+    goto Done;
+  }
+
+  for (Index = 0; Index < flash_pagesize; Index++) {
+    Buffer[Index] = (UINT8) (Index * 7 + 0x5a);
+  }
+
+  Status = NandWrite (ScratchPage, 1, Buffer);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "NandDxe: write failed\n"));
+    goto Done;
+  }
+
+  SetMem (Buffer, flash_pagesize, 0);
+
+  Status = NandRead (ScratchPage, 1, Buffer);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "NandDxe: read back failed\n"));
+    goto Done;
+  }
+
+  Pass = TRUE;
+  for (Index = 0; Index < flash_pagesize; Index++) {
+    //
+    // The bad block marker is kept erased by NandWrite, so it never matches.
+    //
+    if ((Index >= MarkerOffset) && (Index < (MarkerOffset + MarkerWidth))) {
+      if (Buffer[Index] != 0xff) {
+        Pass = FALSE;
+      }
+      continue;
+    }
+
+    if (Buffer[Index] != (UINT8) (Index * 7 + 0x5a)) {
+      DEBUG ((EFI_D_ERROR, "NandDxe: mismatch at offset %d: %02x != %02x\n",
+              Index, Buffer[Index], (UINT8) (Index * 7 + 0x5a)));
+      Pass = FALSE;
+      break;
+    }
+  }
+
+  DEBUG ((EFI_D_ERROR, "NandDxe: write/read-back %a\n", Pass ? "PASSED" : "FAILED"));
+
+  //
+  // Leave the block erased again.
+  //
+  Status = NandEraseBlock (ScratchBlock);
+  DEBUG ((EFI_D_ERROR, "NandDxe: scratch block erased again: %a\n",
+          EFI_ERROR (Status) ? "failed" : "ok"));
+
+Done:
+  FreeAlignedPages (Buffer, EFI_SIZE_TO_PAGES (flash_pagesize));
+}
+
 VOID DumpFlashInfo(struct flash_info *Info)
 {
     ASSERT(Info != NULL);
@@ -279,13 +1096,12 @@ NandDxeInitialize(
 	ASSERT( flash_info );
 	ASSERT( flash_info->num_blocks );
 
-	for(int i = 0; i < 25; i++){
-		DEBUG((EFI_D_ERROR,"%d \n", i));
-	}
 	DumpFlashInfo(flash_info);
 
 	nand_num_blocks = flash_info->num_blocks;
 	blocks_per_mb	= ( 1024 * 1024 ) / flash_info->block_size;
+
+	NandSelfTest ();
 
 	return Status;
 }

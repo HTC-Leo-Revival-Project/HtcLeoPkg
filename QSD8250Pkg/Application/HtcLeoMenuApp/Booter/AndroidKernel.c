@@ -1,5 +1,4 @@
 #include "../menu.h"
-#include "AndroidKernel.h"
 #include <Library/FrameBufferConfigLib.h>
 #include "LinuxShim.h"
 #include "AndroidSDDir.h"
