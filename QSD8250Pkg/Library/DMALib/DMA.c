@@ -52,19 +52,58 @@ INTN DmovExecCmdPtr(UINTN id, UINTN *ptr)
     DMOV_CH ch;
     UINTN n;
     UINTN spins;
+#if DMOV_DUMP_STATUS
+    STATIC UINTN Calls;
+    UINTN Before;
+    UINTN Config;
+#endif
 
     DmovPrepCH(&ch, id);
+
+#if DMOV_DUMP_STATUS
+    Calls++;
+    Config = MmioRead32((UINTN)ch.config);
+    Before = MmioRead32((UINTN)ch.status);
+#endif
 
     /*
      * Throw away results of an earlier list first.  Otherwise the wait below is
      * satisfied by a stale result and the caller walks off before the mover has
      * even started, leaving the command array to be overwritten under it.
      */
+#if DMOV_DUMP_STATUS
+    {
+        UINTN Stale = 0;
+        UINTN Word;
+
+        Before = MmioRead32((UINTN)ch.status);
+        while (DMOV_STATUS_RSLT_COUNT(Before)) {
+            Word = MmioRead32((UINTN)ch.result);
+            DEBUG((EFI_D_ERROR, "DMA: call %d ch %d: stale result %d = %x\n",
+                Calls, id, Stale, Word));
+            Stale++;
+            if (Stale > 16) {
+                DEBUG((EFI_D_ERROR, "DMA: call %d ch %d: stale results do not drain\n",
+                    Calls, id));
+                break;
+            }
+            Before = MmioRead32((UINTN)ch.status);
+        }
+        DEBUG((EFI_D_ERROR, "DMA: call %d ch %d: %d stale results, status now %x\n",
+            Calls, id, Stale, Before));
+    }
+#else
     while (DMOV_STATUS_RSLT_COUNT(MmioRead32((UINTN)ch.status))) {
         MmioRead32((UINTN)ch.result);
     }
+#endif
 
     MmioWrite32((UINTN)ch.cmd,(UINT32)(DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(paddr(ptr))));
+
+#if DMOV_DUMP_STATUS
+    DEBUG((EFI_D_ERROR, "DMA: call %d ch %d: list %x, status before %x, config %x\n",
+        Calls, id, paddr(ptr), Before, Config));
+#endif
 
     /*
      * Wait for a result of *this* list.
@@ -91,6 +130,13 @@ INTN DmovExecCmdPtr(UINTN id, UINTN *ptr)
             return -1;
         }
     }
+
+#if DMOV_DUMP_STATUS
+    if (Calls <= 8) {
+        DEBUG((EFI_D_ERROR, "DMA: call %d ch %d: status %x, result %x\n",
+            Calls, id, n, MmioRead32((UINTN)ch.result)));
+    }
+#endif
 
     while (DMOV_STATUS_RSLT_COUNT(n)) {
 
