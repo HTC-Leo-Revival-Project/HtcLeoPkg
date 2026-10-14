@@ -16,12 +16,35 @@
  */
 #define DMOV_TIMEOUT_SPINS 10000000
 
+/*
+ * The header puts STATUS at 0x200 + ch * 4, but the values that come back from
+ * hardware do not look like a status register at all (they change while the
+ * mover runs, yet never report a result), so on a timeout dump the handful of
+ * offsets a status register could be at and let the hardware decide.
+ */
+#define DMOV_DUMP_STATUS 1
+
 VOID DmovPrepCH(DMOV_CH *ch, UINTN id)
 {
 	ch->cmd = DMOV_CMD_PTR(id);
 	ch->result = DMOV_RSLT(id);
 	ch->status = DMOV_STATUS(id);
 	ch->config = DMOV_CONFIG(id);
+}
+
+STATIC
+VOID
+DmovDumpStatus (
+  IN UINTN  Id
+  )
+{
+    STATIC CONST UINTN Offsets[] = { 0x180, 0x200, 0x240, 0x280, 0x2C0, 0x300, 0x340 };
+    UINTN  Index;
+
+    for (Index = 0; Index < ARRAY_SIZE (Offsets); Index++) {
+        DEBUG ((EFI_D_ERROR, "DMA: ch %d reg %x = %x\n", Id, Offsets[Index],
+                MmioRead32 ((UINTN) DMOV_SDn (Offsets[Index], Id))));
+    }
 }
 
 INTN DmovExecCmdPtr(UINTN id, UINTN *ptr)
@@ -61,8 +84,10 @@ INTN DmovExecCmdPtr(UINTN id, UINTN *ptr)
             break;
         }
         if (spins >= DMOV_TIMEOUT_SPINS) {
-            DEBUG((EFI_D_ERROR, "DMA: timeout on channel %d, status %x (flush %x)\n",
-                id, n, MmioRead32((UINTN)DMOV_FLUSH0(id))));
+            DEBUG((EFI_D_ERROR, "DMA: timeout on channel %d, status %x\n", id, n));
+#if DMOV_DUMP_STATUS
+            DmovDumpStatus (id);
+#endif
             return -1;
         }
     }
