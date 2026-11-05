@@ -34,9 +34,21 @@
   GCC:*_*_ARM_CC_FLAGS = -DKP_LED_ENABLE_METHOD=1 -DDEVICETYPE=1 #Gpio
 
 [LibraryClasses.common]
+  MemoryInitPeiLib|QSD8250Pkg/Library/MemoryInitPeiLib/MemoryInitPeiLib.inf
   DS2746Lib|QSD8250Pkg/Library/DS2746Lib/DS2746.inf
 
+[LibraryClasses.common.SEC]
+  MemoryInitPeiLib|QSD8250Pkg/Library/MemoryInitPeiLib/MemoryInitPeiLib.inf
+
 [Components.common]
+  #
+  # PEI Phase modules
+  #
+  QSD8250Pkg/PrePi/PrePi.inf {
+     <LibraryClasses>
+      NULL|MdeModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+  }
+
   # Charging
   QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
 

@@ -106,7 +106,16 @@ function _build() {
 		fi
 	fi
 
-	make -C BootShim UEFI_BASE=0x02500000 UEFI_SIZE=0x00100000
+	if [ "${DEVICE}" == 'Leo' ]
+	then
+		make -C BootShim UEFI_BASE=0x02500000 UEFI_SIZE=0x00100000
+	elif [ "${DEVICE}" == 'Passion' ]
+	then
+		make -C BootShim UEFI_BASE=0x2C000000 UEFI_SIZE=0x00100000
+	elif [ "${DEVICE}" == 'Schubert' ] #TODO: CONFIRM
+	then
+		make -C BootShim UEFI_BASE=0x02500000 UEFI_SIZE=0x00100000
+	fi
 	if [ $? -ne 0 ]
 	then
 		echo "Failed to build BootShim" 1>&2

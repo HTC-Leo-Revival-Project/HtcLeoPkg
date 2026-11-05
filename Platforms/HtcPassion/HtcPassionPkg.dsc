@@ -33,10 +33,19 @@
 [BuildOptions.common]
   GCC:*_*_ARM_CC_FLAGS = -DKP_LED_ENABLE_METHOD=1 -DDEVICETYPE=4 -DENABLEUART=1 #Gpio
 
-#[LibraryClasses.common]
+[LibraryClasses.common]
+  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
  # DS2746Lib|QSD8250Pkg/Library/DS2746Lib/DS2746.inf
 
+[LibraryClasses.common.SEC]
+  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+
 [Components.common]
+  #
+  # PEI Phase modules
+  #
+  QSD8250Pkg/PeiUniCore/PeiUniCore.inf 
+
   # Charging
   #QSD8250Pkg/GPLDrivers/ChargingDxe/ChargingDxe.inf
   

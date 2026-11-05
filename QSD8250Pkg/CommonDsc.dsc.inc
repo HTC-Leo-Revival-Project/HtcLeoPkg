@@ -157,8 +157,6 @@
 
   # Framebuffer
   FrameBufferBltLib|MdeModulePkg/Library/FrameBufferBltLib/FrameBufferBltLib.inf
-  # MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
-  MemoryInitPeiLib|QSD8250Pkg/Library/MemoryInitPeiLib/MemoryInitPeiLib.inf
   FrameBufferConfigLib|QSD8250Pkg/Library/FrameBufferConfigLib/FrameBufferConfigLib.inf
 
   # Little kernel libraries
@@ -430,8 +428,6 @@
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   MemoryAllocationLib|EmbeddedPkg/Library/PrePiMemoryAllocationLib/PrePiMemoryAllocationLib.inf
-  # MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
-  MemoryInitPeiLib|QSD8250Pkg/Library/MemoryInitPeiLib/MemoryInitPeiLib.inf
   PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
 
@@ -462,14 +458,6 @@
 #
 ################################################################################
 [Components.common]
-  #
-  # PEI Phase modules
-  #
-  QSD8250Pkg/PrePi/PrePi.inf {
-     <LibraryClasses>
-      NULL|MdeModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
-   }
-
   #
   # DXE
   #
