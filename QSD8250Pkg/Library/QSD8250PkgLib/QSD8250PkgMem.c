@@ -30,9 +30,6 @@
 #define QSD8250_PERIPH_BASE              0xA0000000
 #define QSD8250_PERIPH_SIZE              0x0C300000
 
-#define FB_ADDR FixedPcdGet32(PcdMipiFrameBufferAddress)
-#define FB_SIZE FixedPcdGet32(PcdMipiFrameBufferWidth)*FixedPcdGet32(PcdMipiFrameBufferHeight)*(FixedPcdGet32(PcdMipiFrameBufferPixelBpp) / 8)
-
 STATIC struct ReservedMemory {
     EFI_PHYSICAL_ADDRESS         Offset;
     EFI_PHYSICAL_ADDRESS         Size;
@@ -40,14 +37,7 @@ STATIC struct ReservedMemory {
     { 0x00000000, 0x00100000 },    // APPSBL
     { 0x00100000, 0x00100000 },    // SMEM
     { 0x00200000, 0x00200000 },    // OEMSBL
-    { 0x00400000, 0x02100000 },    // AMSS
-    { 0x10000000, 0x01800000 },    // QDSP6
-    { 0x2FFC0000, 0x00040000 },    // PSTORE
-#if ENABLEUART == 1
-    { 0xA9A00000, 0x00001000 },    //UART
-#endif
-    
-    { FB_ADDR,    FB_SIZE    },    // Display Reserved
+    { 0x02A00000, 0x000BBB00 },    // Display Reserved
 };
 
 /**
@@ -65,7 +55,6 @@ ArmPlatformGetVirtualMemoryMap (
     ARM_MEMORY_REGION_DESCRIPTOR  *VirtualMemoryTable;
     EFI_RESOURCE_ATTRIBUTE_TYPE   ResourceAttributes;
     UINTN                         Index = 0, Count, ReservedTop;
-    UINTN                         IndexDram = -1;
     EFI_PEI_HOB_POINTERS          NextHob;
     UINT64                        ResourceLength;
     EFI_PHYSICAL_ADDRESS          ResourceTop;
@@ -127,45 +116,40 @@ ArmPlatformGetVirtualMemoryMap (
     CacheAttributes = DDR_ATTRIBUTES_CACHED;
     Index = 0;
 
-    // System DRAM
-    VirtualMemoryTable[Index].PhysicalBase = PcdGet64 (PcdSystemMemoryBase);
-    VirtualMemoryTable[Index].VirtualBase  = VirtualMemoryTable[Index].PhysicalBase;
-    VirtualMemoryTable[Index].Length       = PcdGet64 (PcdSystemMemorySize);
-    VirtualMemoryTable[Index].Attributes   = ARM_MEMORY_REGION_ATTRIBUTE_WRITE_BACK;
-    IndexDram = Index++;
-
-    // Peripheral space before DRAM
-    if (VirtualMemoryTable[IndexDram].PhysicalBase != 0) {
-        VirtualMemoryTable[Index].PhysicalBase = 0x0;
-        VirtualMemoryTable[Index].VirtualBase  = 0x0;
-        VirtualMemoryTable[Index].Length       = VirtualMemoryTable[IndexDram].PhysicalBase;
-        VirtualMemoryTable[Index++].Attributes   = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
+    if (PcdGet64 (PcdSystemMemoryBase) != 0x0) {
+      // SOC peripherals before DDR
+      VirtualMemoryTable[Index].PhysicalBase    = 0x00000000;
+      VirtualMemoryTable[Index].VirtualBase     = VirtualMemoryTable[Index].PhysicalBase;
+      VirtualMemoryTable[Index].Length          = PcdGet64 (PcdSystemMemoryBase) - 0x01800000;
+      VirtualMemoryTable[Index].Attributes      = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
+      Index++;
     }
 
-    // Remap the framebuffer region as uncached memory
-    VirtualMemoryTable[Index].PhysicalBase  = FB_ADDR;
+    // MPU protected DDR
+    VirtualMemoryTable[Index].PhysicalBase    = 0x10000000;
     VirtualMemoryTable[Index].VirtualBase     = VirtualMemoryTable[Index].PhysicalBase;
-    VirtualMemoryTable[Index].Length          = FB_SIZE;
-    VirtualMemoryTable[Index++].Attributes      = DDR_ATTRIBUTES_UNCACHED;
+    VirtualMemoryTable[Index].Length          = PcdGet64 (PcdSystemMemoryBase) - 0x10000000;
+    VirtualMemoryTable[Index].Attributes      = WRITE_BACK_XN;
 
-    // Remap the FD region as normal executable memory
-    VirtualMemoryTable[Index].PhysicalBase  = PcdGet64 (PcdFdBaseAddress);
+    // DDR - 448 MB section
+    VirtualMemoryTable[++Index].PhysicalBase    = PcdGet64 (PcdSystemMemoryBase);
     VirtualMemoryTable[Index].VirtualBase     = VirtualMemoryTable[Index].PhysicalBase;
-    VirtualMemoryTable[Index].Length          = FixedPcdGet32 (PcdFdSize);
-    VirtualMemoryTable[Index++].Attributes      = ARM_MEMORY_REGION_ATTRIBUTE_WRITE_BACK;
+    VirtualMemoryTable[Index].Length          = PcdGet64 (PcdSystemMemorySize);
+    VirtualMemoryTable[Index].Attributes      = CacheAttributes;
 
     // SOC peripherals after DDR
-    VirtualMemoryTable[Index].PhysicalBase  = QSD8250_PERIPH_BASE;
+    VirtualMemoryTable[++Index].PhysicalBase  = QSD8250_PERIPH_BASE;
     VirtualMemoryTable[Index].VirtualBase     = VirtualMemoryTable[Index].PhysicalBase;
     VirtualMemoryTable[Index].Length          = QSD8250_PERIPH_SIZE;
-    VirtualMemoryTable[Index++].Attributes      = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
+    VirtualMemoryTable[Index].Attributes      = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
 
     // End of Table
-    VirtualMemoryTable[Index].PhysicalBase  = 0;
+    VirtualMemoryTable[++Index].PhysicalBase  = 0;
     VirtualMemoryTable[Index].VirtualBase     = 0;
     VirtualMemoryTable[Index].Length          = 0;
-    VirtualMemoryTable[Index++].Attributes      = (ARM_MEMORY_REGION_ATTRIBUTES)0;
+    VirtualMemoryTable[Index].Attributes      = (ARM_MEMORY_REGION_ATTRIBUTES)0;
 
     ASSERT((Index + 1) <= MAX_VIRTUAL_MEMORY_MAP_DESCRIPTORS);
+
     *VirtualMemoryMap = VirtualMemoryTable;
 }

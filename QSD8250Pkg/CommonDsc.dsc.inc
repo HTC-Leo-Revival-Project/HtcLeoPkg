@@ -157,7 +157,8 @@
 
   # Framebuffer
   FrameBufferBltLib|MdeModulePkg/Library/FrameBufferBltLib/FrameBufferBltLib.inf
-  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+  # MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+  MemoryInitPeiLib|QSD8250Pkg/Library/MemoryInitPeiLib/MemoryInitPeiLib.inf
   FrameBufferConfigLib|QSD8250Pkg/Library/FrameBufferConfigLib/FrameBufferConfigLib.inf
 
   # Little kernel libraries
@@ -378,7 +379,16 @@
   # System Memory (576MB)
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x11800000
   gArmTokenSpaceGuid.PcdSystemMemorySize|0x1E800000
-  gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x01000000
+  gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x08000000
+
+  # UEFI Stack 
+  gEmbeddedTokenSpaceGuid.PcdPrePiStackBase|0x02600000 # 0x02600000
+  gEmbeddedTokenSpaceGuid.PcdPrePiStackSize|0x00040000      # 256K stack
+  gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x02640000 # 0x03240000
+
+  # UEFI Memory Pool
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolBase|0x2CD00000 #0x02B77000
+  gQSD8250PkgTokenSpaceGuid.PcdUefiMemPoolSize|0x03300000 #0x01489000
 
   # We boot all processors here!!!!!
   gArmPlatformTokenSpaceGuid.PcdCoreCount|1
@@ -420,7 +430,8 @@
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   MemoryAllocationLib|EmbeddedPkg/Library/PrePiMemoryAllocationLib/PrePiMemoryAllocationLib.inf
-  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+  # MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+  MemoryInitPeiLib|QSD8250Pkg/Library/MemoryInitPeiLib/MemoryInitPeiLib.inf
   PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
 
@@ -454,7 +465,10 @@
   #
   # PEI Phase modules
   #
-  QSD8250Pkg/PrePi/PeiUniCore.inf
+  QSD8250Pkg/PrePi/PrePi.inf {
+     <LibraryClasses>
+      NULL|MdeModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+   }
 
   #
   # DXE

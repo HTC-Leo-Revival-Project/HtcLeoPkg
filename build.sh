@@ -6,6 +6,8 @@ export WORKSPACE=$PWD/workspace
 
 AvailablePlatforms=("Leo" "Schubert" "Passion" "All")
 IsValid=0
+PATCH1_APPLIED=0
+PATCH2_APPLIED=0
 
 while getopts d: flag
 do
@@ -48,9 +50,6 @@ function _clean() {
 function _patch_edk() {
 	echo "Patching EDK2 Source"
 
-	PATCH1_APPLIED=0
-	PATCH2_APPLIED=0
-
 	file="../edk2/BaseTools/Source/C/GenFw/Elf32Convert.c"
 	# Check if R_ARM_PC13 already exists
 	if ! grep -q "case R_ARM_PC13:" "${file}"
@@ -61,6 +60,7 @@ function _patch_edk() {
 		PATCH1_APPLIED=1
 	else
 		echo "'case R_ARM_PC13:' already exists. No changes made."
+		PATCH1_APPLIED=-1
 	fi
 
 
@@ -73,6 +73,7 @@ function _patch_edk() {
 		PATCH2_APPLIED=1
 	else
 		echo "Pattern not found, no changes made."
+		PATCH2_APPLIED=-1
 	fi
 
 	if [ ${PATCH1_APPLIED} -eq 1 ] && [ ${PATCH2_APPLIED} -eq 1 ]
@@ -105,7 +106,7 @@ function _build() {
 		fi
 	fi
 
-	make -C BootShim UEFI_BASE=0x2C000000 UEFI_SIZE=0x00100000
+	make -C BootShim UEFI_BASE=0x02500000 UEFI_SIZE=0x00100000
 	if [ $? -ne 0 ]
 	then
 		echo "Failed to build BootShim" 1>&2
@@ -116,8 +117,12 @@ function _build() {
 
 	NUM_CPUS=$((`getconf _NPROCESSORS_ONLN` + 2))
 
-	make clean -C ../edk2/BaseTools
-	make -C ../edk2/BaseTools -j$(nproc)
+	if [ ${PATCH1_APPLIED} -eq 1 ] && [ ${PATCH2_APPLIED} -eq 1 ]
+	then
+		echo "Rebuilding BaseTools"
+		make clean -C ../edk2/BaseTools
+		make -C ../edk2/BaseTools -j$(nproc)
+	fi
 
 	platforms=()
 

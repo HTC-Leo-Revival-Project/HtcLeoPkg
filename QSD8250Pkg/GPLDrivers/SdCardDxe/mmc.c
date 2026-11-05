@@ -108,7 +108,7 @@ mmc_bread(int dev_num, ulong blknr, lbaint_t blkcnt, void *dst)
     int i;
     lbaint_t run_blkcnt = 0;
 
-    debug("bread blknr=0x%08lx blkcnt=0x%08lx dst=0x%08lx\n", blknr, blkcnt, dst);
+    //debug("bread blknr=0x%08lx blkcnt=0x%08lx dst=0x%08lx\n", blknr, blkcnt, dst);
 
     if (blkcnt == 0) {
         return 0;
