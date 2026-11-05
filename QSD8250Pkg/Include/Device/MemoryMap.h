@@ -61,10 +61,10 @@ static ARM_MEMORY_REGION_DESCRIPTOR_EX gDeviceMemoryDescriptorEx[] = {
 //MemBase,   MemSize,   MemLabel(32 Char.), BuildHob, ResourceType, ResourceAttribute, MemoryType, CacheAttributes
 
 //------------- DDR Regions ------},
-{0x00000000, 0x00100000, "SBL",              NoHob,  MMAP_IO, INITIALIZED, Conv,   DEVICE},
+{0x00000000, 0x00100000, "SBL",              NoHob,  SYS_MEM, SYS_MEM_CAP, Reserv, DEVICE},
 {0x00100000, 0x00100000, "SMEM",             AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED},
-{0x00200000, 0x00200000, "OEMSBL",           NoHob,  MMAP_IO, INITIALIZED, Conv,   DEVICE},
-{0x00400000, 0x02100000, "AMSS",             NoHob,  MMAP_IO, INITIALIZED, Conv,   DEVICE},
+{0x00200000, 0x00200000, "OEMSBL",           NoHob,  SYS_MEM, SYS_MEM_CAP, Reserv, DEVICE},
+{0x00400000, 0x02100000, "AMSS",             NoHob,  SYS_MEM, SYS_MEM_CAP, Reserv, DEVICE},
 {0x02500000, 0x00100000, "UEFI FD",          AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
 {0x02600000, 0x00040000, "UEFI Stack",       AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
 {0x02640000, 0x00010000, "CPU Vectors",      AddMem, SYS_MEM, SYS_MEM_CAP, BsCode, WRITE_BACK},
