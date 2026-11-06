@@ -175,7 +175,7 @@ SircDxeInitialize (
                             NULL
                             );
   if (EFI_ERROR (Status)) {
-    mInterrupt->RegisterInterruptSource (mInterrupt, INT_SIRC_0, NULL);
+    mInterrupt->DisableInterruptSource(mInterrupt, INT_SIRC_0);
     return Status;
   }
 
