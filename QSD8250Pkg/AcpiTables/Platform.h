@@ -14,21 +14,21 @@
 *
 **/
 
-#ifndef _PLATFORM_IMX_H_
-#define _PLATFORM_IMX_H_
+#ifndef _PLATFORM_QSD_H_
+#define _PLATFORM_QSD_H_
 
 #include <IndustryStandard/Acpi50.h>
 
 //
 // Platform specific definition
 //
-#define EFI_ACPI_OEM_TABLE_ID                   SIGNATURE_64('I','M','X','6','E','D','K','2') // OEM table id 8 bytes long
+#define EFI_ACPI_OEM_TABLE_ID                   SIGNATURE_64('Q','C','O','M','8','2','5','0') // OEM table id 8 bytes long
 #define EFI_ACPI_OEM_REVISION                   0x01000105
-#define EFI_ACPI_CREATOR_ID                     SIGNATURE_32('I','M','X','6')
+#define EFI_ACPI_CREATOR_ID                     SIGNATURE_32('Q','C','O','M')
 #define EFI_ACPI_CREATOR_REVISION               0x00000001
 
-#define EFI_ACPI_OEM_ID               {'M','C','R','S','F','T'} // OEMID 6 bytes
-#define EFI_ACPI_VENDOR_ID            SIGNATURE_32('N','X','P','I')
+#define EFI_ACPI_OEM_ID               {'Q','C','8','2','5','0'} // OEMID 6 bytes
+#define EFI_ACPI_VENDOR_ID            SIGNATURE_32('Q','C','O','M')
 #define EFI_ACPI_CSRT_REVISION        0x00000005
 #define EFI_ACPI_5_0_CSRT_REVISION    0x00000000
 

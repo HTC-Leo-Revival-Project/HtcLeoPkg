@@ -13,7 +13,7 @@
 *
 */
 
-DefinitionBlock ("DSDT.aml", "DSDT", 5, "MSFT", "EDK2", 1)
+DefinitionBlock ("DSDT.aml", "DSDT", 5, "QCOM", "EDK2", 1)
 {
   Scope (\_SB_)
   {
