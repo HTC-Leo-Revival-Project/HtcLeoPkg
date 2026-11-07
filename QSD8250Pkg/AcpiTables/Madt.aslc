@@ -1,0 +1,58 @@
+/** @file
+*  Multiple APIC Description Table (MADT) for the QSD8250 (HTC HD2).
+*
+*  The Scorpion has no GIC.  The interrupt controller (the VIC) comes from a
+*  HAL extension (halextqcvic, CSRT QCOM/0x8250), but the HAL still
+*  enumerates processors from MADT GICC entries, so there is one GICC entry
+*  for the single core with all GIC bases zero and no GICD, like the
+*  Raspberry Pi 3 (no GIC either).  ACPI 5.0 layout (Windows 8.1 predates
+*  ACPI 5.1 GICC).
+**/
+
+#include "Platform.h"
+
+#pragma pack (1)
+
+typedef struct {
+  EFI_ACPI_5_0_MULTIPLE_APIC_DESCRIPTION_TABLE_HEADER  Header;
+  EFI_ACPI_5_0_GIC_STRUCTURE                           Gicc[1];
+} QSD8250_MADT;
+
+#pragma pack ()
+
+STATIC QSD8250_MADT  Madt = {
+  {
+    {
+      EFI_ACPI_5_0_MULTIPLE_APIC_DESCRIPTION_TABLE_SIGNATURE,  // "APIC"
+      sizeof (QSD8250_MADT),
+      EFI_ACPI_5_0_MULTIPLE_APIC_DESCRIPTION_TABLE_REVISION,
+      0,                                                       // checksum at install
+      EFI_ACPI_OEM_ID,
+      EFI_ACPI_OEM_TABLE_ID,
+      EFI_ACPI_OEM_REVISION,
+      EFI_ACPI_CREATOR_ID,
+      EFI_ACPI_CREATOR_REVISION
+    },
+    0,  // LocalApicAddress
+    0   // Flags (no PC-AT 8259)
+  },
+  {
+    {
+      EFI_ACPI_5_0_GIC,                     // Type
+      sizeof (EFI_ACPI_5_0_GIC_STRUCTURE),  // Length (40)
+      0,                                    // Reserved
+      0,                                    // GicId (CPU interface number)
+      0,                                    // AcpiProcessorUid
+      EFI_ACPI_5_0_GIC_ENABLED,             // Flags
+      0,                                    // ParkingProtocolVersion
+      0,                                    // PerformanceInterruptGsiv
+      0,                                    // ParkedAddress
+      0                                     // PhysicalBaseAddress (no GIC)
+    }
+  }
+};
+
+VOID* ReferenceAcpiTable(VOID)
+{
+  return (VOID*)&Madt;
+}

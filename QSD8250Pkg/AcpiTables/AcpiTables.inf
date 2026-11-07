@@ -27,6 +27,7 @@
   Csrt.aslc
   Dbg2.aslc
   Fadt.aslc
+  Madt.aslc
 
 [Packages]
   ArmPkg/ArmPkg.dec

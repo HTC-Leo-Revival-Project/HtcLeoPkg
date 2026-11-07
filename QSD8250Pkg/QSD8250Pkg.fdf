@@ -121,6 +121,9 @@ APRIORI DXE {
   INF QSD8250Pkg/Drivers/SmbiosPlatformDxe/SmbiosPlatformDxe.inf
   INF MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
 
+  # Windows RT kernel errata patcher
+  INF QSD8250Pkg/Drivers/KernelErrataPatcherDxe/KernelErrataPatcherDxe.inf
+
   #
   # UEFI applications
   #

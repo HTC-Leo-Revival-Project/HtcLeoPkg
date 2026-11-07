@@ -1,0 +1,26 @@
+[Defines]
+  INF_VERSION     = 0x00010005
+  BASE_NAME       = KernelErrataPatcherDxe
+  FILE_GUID       = 7a4b5f92-1c3d-4e8a-9f6b-2d0e8c4a1b3e
+  MODULE_TYPE     = DXE_DRIVER
+  VERSION_STRING  = 1.0
+  ENTRY_POINT     = KernelErrataPatcherDxeEntry
+
+[Sources]
+  KernelErrataPatcherDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmPkg/ArmPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiLib
+  DebugLib
+  BaseLib
+  BaseMemoryLib
+  CacheMaintenanceLib
+
+[Depex]
+  TRUE

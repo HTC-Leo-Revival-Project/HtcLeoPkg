@@ -575,6 +575,11 @@
   MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
 
   #
+  # Windows RT kernel errata patcher (bypass 0x5D UNSUPPORTED_PROCESSOR)
+  #
+  QSD8250Pkg/Drivers/KernelErrataPatcherDxe/KernelErrataPatcherDxe.inf
+
+  #
   # Bds
   #
   MdeModulePkg/Universal/PrintDxe/PrintDxe.inf

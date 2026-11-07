@@ -31,6 +31,12 @@ if [ "${EMU}" = 1 ]; then
     export EMU_WORKAROUND=1
 fi
 
+if [ "${EMU}" = 1 ]; then
+    SERIAL_DEFS="-D USE_UART_FOR_SERIAL_OUTPUT=1 -D USE_SCREEN_FOR_SERIAL_OUTPUT=0"
+else
+    SERIAL_DEFS="-D USE_UART_FOR_SERIAL_OUTPUT=0 -D USE_SCREEN_FOR_SERIAL_OUTPUT=1"
+fi
+
 # Hand the switch to the firmware as a generated header: the DSC macro route
 # does not pick up exported environment variables, and SEC has to know whether
 # to start the AP generic timer itself.
@@ -190,7 +196,7 @@ function _build() {
 	for PlatformName in "${platforms[@]}"
 	do
 		echo "Building uefi for ${PlatformName}"
-		build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc" -b DEBUG
+		build -n "${NUM_CPUS}" -a ARM -t CLANGDWARF -p "Platforms/Htc${PlatformName}/Htc${PlatformName}Pkg.dsc" -b DEBUG ${SERIAL_DEFS}
 
 		./build_boot_images.sh "${PlatformName}"
 	done
